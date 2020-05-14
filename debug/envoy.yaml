@@ -1,0 +1,89 @@
+static_resources:
+  listeners:
+    - address:
+        socket_address:
+          address: 127.0.0.1
+          port_value: 8080
+      filter_chains:
+        - filters:
+            - name: envoy.filters.network.http_connection_manager
+              typed_config:
+                '@type': type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                stat_prefix: root
+                route_config:
+                  virtual_hosts:
+                    - name: root
+                      domains: ['*']
+                      routes:
+                        - match:
+                            prefix: /
+                          route:
+                            cluster: upstream
+                http_filters:
+                  - name: envoy.filters.http.header_to_metadata
+                    typed_config:
+                      '@type': type.googleapis.com/envoy.extensions.filters.http.header_to_metadata.v3.Config
+                      request_rules:
+                        - header: dummy
+                          on_header_present:
+                            metadata_namespace: envoy.filters.http.ext_authz
+                            key: service
+                            value: test
+                          on_header_missing:
+                            metadata_namespace: envoy.filters.http.ext_authz
+                            key: service
+                            value: test
+                  - name: envoy.filters.http.ext_authz
+                    typed_config:
+                      '@type': type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthz
+                      grpc_service:
+                        envoy_grpc:
+                          cluster_name: ext-authz
+                      metadata_context_namespaces:
+                        - envoy.filters.http.ext_authz
+                  - name: envoy.filters.http.router
+    - address:
+        socket_address:
+          address: 127.0.0.1
+          port_value: 8081
+      filter_chains:
+        - filters:
+            - name: envoy.filters.network.http_connection_manager
+              typed_config:
+                '@type': type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                stat_prefix: root
+                route_config:
+                  virtual_hosts:
+                    - name: root
+                      domains: ['*']
+                      routes:
+                        - match:
+                            prefix: /
+                          direct_response:
+                            status: 200
+                http_filters:
+                  - name: envoy.filters.http.router
+  clusters:
+    - name: upstream
+      connect_timeout: 0.2s
+      load_assignment:
+        cluster_name: upstream
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: 127.0.0.1
+                      port_value: 8081
+    - name: ext-authz
+      connect_timeout: 0.2s
+      load_assignment:
+        cluster_name: ext-authz
+        endpoints:
+          lb_endpoints:
+            endpoint:
+              address:
+                socket_address:
+                  address: 127.0.0.1
+                  port_value: 8082
+      http2_protocol_options: {}
