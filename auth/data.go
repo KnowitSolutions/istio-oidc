@@ -21,6 +21,7 @@ type request struct {
 	service *service
 	session *session
 
+	roles  map[string][]string
 	claims bearerClaims
 }
 
@@ -84,7 +85,7 @@ func (req *request) Fields() log.Fields {
 	}
 
 	return log.Fields{
-		"service": req.service,
+		"service": req.service.Name,
 		"url":     loc.String(),
 		"bearer":  bearer,
 		"session": req.session != nil,

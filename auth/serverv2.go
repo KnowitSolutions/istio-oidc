@@ -22,9 +22,11 @@ func (srv *ServerV2) Check(_ context.Context, req *auth.CheckRequest) (*auth.Che
 	r := &response{status: http.StatusInternalServerError}
 	fail := false
 
-	meta, err := mapMetadata(req.Attributes.MetadataContext.FilterMetadata)
+	meta := req.Attributes.MetadataContext.FilterMetadata["istio-keycloak"]
+	authz, err := unmarshallAuthz(meta)
 	if err != nil {
 		fail = true
+		log.WithError(err).Warn("Unable to unmarshall authorization requirements")
 	}
 
 	proto := req.Attributes.Request.Http.Headers["x-forwarded-proto"]
@@ -40,12 +42,12 @@ func (srv *ServerV2) Check(_ context.Context, req *auth.CheckRequest) (*auth.Che
 	dummy.Header.Add("Cookie", req.Attributes.Request.Http.Headers["cookie"])
 
 	if !fail {
-
 		r = srv.check(&request{
-			service: srv.services[meta["envoy.filters.http.ext_authz"]["service"].string],
+			service: srv.services[authz.service],
 			url:     *loc,
 			cookies: dummy.Cookies(),
-		}, []string{}) // TODO
+			roles:   authz.roles,
+		})
 	}
 
 	res := &auth.CheckResponse{Status: &status.Status{}}

@@ -27,8 +27,7 @@ type accessClaims struct {
 type bearerClaims struct {
 	expirableImpl
 	jwt.Claims
-	RealmAccess    []string            `json:"rlm"`
-	ResourceAccess map[string][]string `json:"rse"`
+	Roles map[string][]string `json:"rol"`
 }
 
 func makeBearerClaims(req *request, tok *oauth2.Token) (*bearerClaims, error) {
@@ -96,10 +95,10 @@ func makeBearerClaims(req *request, tok *oauth2.Token) (*bearerClaims, error) {
 
 	claims := &bearerClaims{}
 	claims.Subject = idToken.Subject
-	claims.RealmAccess = accClaims.RealmAccess.Roles
-	claims.ResourceAccess = map[string][]string{}
+	claims.Roles = make(map[string][]string, len(accClaims.ResourceAccess) + 1)
+	claims.Roles[""] = accClaims.RealmAccess.Roles
 	for k, v := range accClaims.ResourceAccess {
-		claims.ResourceAccess[k] = v.Roles
+		claims.Roles[k] = v.Roles
 	}
 
 	return claims, nil

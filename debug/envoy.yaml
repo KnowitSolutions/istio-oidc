@@ -26,21 +26,25 @@ static_resources:
                       request_rules:
                         - header: dummy
                           on_header_present:
-                            metadata_namespace: envoy.filters.http.ext_authz
-                            key: service
-                            value: test
+                            metadata_namespace: istio-keycloak
+                            key: config
+                            value: KkYKMQoFcm9sZXMSKComCg8KABILMgkKBxoFdGVzdDEKEwoEdGVzdBILMgkKBxoFdGVzdDIKEQoHc2VydmljZRIGGgR0ZXN0
+                            type: PROTOBUF_VALUE
+                            encode: BASE64
                           on_header_missing:
-                            metadata_namespace: envoy.filters.http.ext_authz
-                            key: service
-                            value: test
+                            metadata_namespace: istio-keycloak
+                            key: config
+                            value: KkYKMQoFcm9sZXMSKComCg8KABILMgkKBxoFdGVzdDEKEwoEdGVzdBILMgkKBxoFdGVzdDIKEQoHc2VydmljZRIGGgR0ZXN0
+                            type: PROTOBUF_VALUE
+                            encode: BASE64
                   - name: envoy.filters.http.ext_authz
                     typed_config:
                       '@type': type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthz
-                      grpc_service:
+                      grpc_service: # TODO: Default timeout of 200ms might be too little when dealing with Keycloak
                         envoy_grpc:
                           cluster_name: ext-authz
                       metadata_context_namespaces:
-                        - envoy.filters.http.ext_authz
+                        - istio-keycloak
                   - name: envoy.filters.http.router
     - address:
         socket_address:
