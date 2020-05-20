@@ -4,9 +4,14 @@ import "time"
 
 type Server struct {
 	KeycloakURL string
-	TokenDuration time.Duration
+
+	SessionCleaning struct {
+		Interval    time.Duration
+		GracePeriod time.Duration
+	}
 }
 
-func (cfg *Server) Validate() error {
-	return nil // TODO
+// TODO: Remember to log all errors here as fatal
+func (cfg *Server) Validate() {
+
 }

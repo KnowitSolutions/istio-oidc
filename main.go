@@ -10,22 +10,24 @@ import (
 	"istio-keycloak/auth"
 	"istio-keycloak/config"
 	"net"
+	"time"
 )
 
-// TODO: Roles in Envoy metadata so that roles can be specified per path
 // TODO: Forward tracing headers from gRPC when calling HTTP services
 func main() {
 	//log.SetHandler(logfmt.Default)
 	log.SetHandler(cli.Default)
 
 	srv := auth.NewServer()
-	srv.TokenDuration = 30
 	srv.KeycloakURL = "http://keycloak.localhost"
+	srv.SessionCleaning.Interval = 30 * time.Second
+	srv.SessionCleaning.GracePeriod = 30 * time.Second
+	srv.Validate()
 
 	srv.Key = make([]byte, 64)
 	_, err := rand.Read(srv.Key)
 	if err != nil {
-		panic(err.Error())
+		log.WithError(err).Fatal("Unable to generate cryptographic key")
 	}
 
 	err = srv.AddService(&config.Service{
@@ -38,12 +40,15 @@ func main() {
 		},
 	})
 	if err != nil {
-		panic(err.Error())
+		// TODO: Log more info about service
+		// TODO: Not fatal when dynamic load from K8s
+		log.WithError(err).Fatal("Unable to add service to server")
 	}
 
 	lis, err := net.Listen("tcp", ":8082")
 	if err != nil {
-		panic(err.Error())
+		// TODO: Log bind parameters
+		log.WithError(err).Fatal("Unable to bind TCP socket")
 	}
 
 	grpcServer := grpc.NewServer()
@@ -52,6 +57,6 @@ func main() {
 
 	err = grpcServer.Serve(lis)
 	if err != nil {
-		panic(err.Error())
+		log.WithError(err).Fatal("Unable to start gRPC server ")
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
+// TODO: Add always deny option
 type authorization struct {
 	service string
 	roles   map[string][]string

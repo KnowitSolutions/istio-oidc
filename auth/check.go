@@ -44,7 +44,9 @@ func (srv *server) isAuthenticated(req *request) bool {
 
 	hash := sha512.Sum512([]byte(token))
 	var ok bool
+	srv.sessionsMu.RLock()
 	req.session, ok = srv.sessions[hash]
+	srv.sessionsMu.RUnlock()
 	return ok
 }
 
@@ -116,10 +118,12 @@ func (srv *server) setToken(req *request, token *oauth2.Token, uri string) *resp
 
 	tok := makeToken(srv.Key, claims, token.Expiry)
 	hash := sha512.Sum512([]byte(tok))
+	srv.sessionsMu.Lock()
 	srv.sessions[hash] = &session{
 		refreshToken: token.RefreshToken,
 		expiry:       token.Expiry,
 	}
+	srv.sessionsMu.Unlock()
 	// TODO: Gossip
 
 	cookie := http.Cookie{

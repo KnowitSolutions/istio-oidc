@@ -13,6 +13,7 @@ type OIDC struct {
 	CallbackPath string
 }
 
+// TODO: Remember to log all errors here
 func (cfg *Service) Validate() error {
-	return nil // TODO
+	return nil
 }
