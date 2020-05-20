@@ -56,21 +56,32 @@ func (srv *server) sessionCleaner() {
 
 	for {
 		<-tick.C
-		max := time.Now().Add(-srv.SessionCleaning.GracePeriod)
-		log.WithField("max", max.Format(time.RFC3339)).
-			Info("Cleaning sessions")
+
+		start := time.Now()
+		max := start.Add(-srv.SessionCleaning.GracePeriod)
 		tot := 0
 
-		srv.sessionsMu.Lock()
+		log.WithField("max", max.Format(time.RFC3339)).
+			Info("Cleaning sessions")
+
+		srv.sessionsMu.RLock()
 		for k, v := range srv.sessions {
 			if v.expiry.Before(max) {
+				srv.sessionsMu.RUnlock()
+				srv.sessionsMu.Lock()
+
 				delete(srv.sessions, k)
 				tot++
+
+				srv.sessionsMu.Unlock()
+				srv.sessionsMu.RLock()
 			}
 		}
-		srv.sessionsMu.Unlock()
+		srv.sessionsMu.RUnlock()
 
-		log.WithField("total", tot).
+		stop := time.Now()
+		dur := stop.Sub(start)
+		log.WithFields(log.Fields{"duration": dur, "total": tot}).
 			Info("Done cleaning sessions")
 	}
 }
