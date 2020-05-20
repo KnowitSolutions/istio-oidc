@@ -16,9 +16,9 @@ type service struct {
 	oidcVerifier *oidc.IDTokenVerifier
 }
 
-func newService(keycloak string, cfg *config.Service) (*service, error) {
+func newService(ctx context.Context, keycloak string, cfg *config.Service) (*service, error) {
 	iss := fmt.Sprintf("%s/auth/realms/%s", keycloak, cfg.Realm)
-	prov, err := oidc.NewProvider(context.TODO(), iss)
+	prov, err := oidc.NewProvider(ctx, iss)
 	if err != nil {
 		log.WithField("issuer", iss).WithError(err).
 			Error("Unable to fetch OIDC provider config")

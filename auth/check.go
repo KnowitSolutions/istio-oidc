@@ -16,7 +16,7 @@ type stateClaims struct {
 	Path string `json:"path"`
 }
 
-func (srv *server) check(req *request) *response {
+func (srv *server) check(ctx context.Context, req *request) *response {
 	srv.servicesMu.RLock()
 	req.service = srv.services[req.authorization.service]
 	srv.servicesMu.RUnlock()
@@ -25,11 +25,11 @@ func (srv *server) check(req *request) *response {
 		log.WithFields(req).Warn("Invalid service")
 		return &response{status: http.StatusBadRequest}
 	} else if req.url.Path == req.service.OIDC.CallbackPath {
-		return srv.finishOIDC(req)
+		return srv.finishOIDC(ctx, req)
 	} else if !srv.isAuthenticated(req) {
 		return srv.startOIDC(req)
 	} else if req.claims.isExpired() {
-		return srv.updateToken(req)
+		return srv.updateToken(ctx, req)
 	} else {
 		return srv.authorize(req)
 	}
@@ -67,7 +67,7 @@ func (srv *server) startOIDC(req *request) *response {
 	return &response{status: http.StatusSeeOther, headers: headers}
 }
 
-func (srv *server) finishOIDC(req *request) *response {
+func (srv *server) finishOIDC(ctx context.Context, req *request) *response {
 	log.WithFields(req).Info("Finishing OIDC")
 
 	query := req.url.Query()
@@ -84,7 +84,7 @@ func (srv *server) finishOIDC(req *request) *response {
 	}
 
 	cfg := req.oauth2()
-	tok, err := cfg.Exchange(context.TODO(), query["code"][0])
+	tok, err := cfg.Exchange(ctx, query["code"][0])
 	if err != nil {
 		log.WithFields(log.Fields{
 			"clientId": cfg.ClientID,
@@ -95,14 +95,14 @@ func (srv *server) finishOIDC(req *request) *response {
 		return &response{status: http.StatusForbidden}
 	}
 
-	return srv.setToken(req, tok, claims.Path)
+	return srv.setToken(ctx, req, tok, claims.Path)
 }
 
-func (srv *server) updateToken(req *request) *response {
+func (srv *server) updateToken(ctx context.Context, req *request) *response {
 	log.WithFields(req).Info("Updating JWT")
 
 	cfg := req.oauth2()
-	src := cfg.TokenSource(context.TODO(), &oauth2.Token{RefreshToken: req.session.refreshToken})
+	src := cfg.TokenSource(ctx, &oauth2.Token{RefreshToken: req.session.refreshToken})
 
 	tok, err := src.Token()
 	if err != nil {
@@ -110,12 +110,12 @@ func (srv *server) updateToken(req *request) *response {
 		return &response{status: http.StatusForbidden}
 	}
 
-	return srv.setToken(req, tok, "")
+	return srv.setToken(ctx, req, tok, "")
 }
 
 // TODO: This calls JWKs endpoint twice. That is unnecessary. See if it is possible to merge.
-func (srv *server) setToken(req *request, token *oauth2.Token, uri string) *response {
-	claims, err := makeBearerClaims(req, token)
+func (srv *server) setToken(ctx context.Context, req *request, token *oauth2.Token, uri string) *response {
+	claims, err := makeBearerClaims(ctx, req, token)
 	if err != nil {
 		return &response{status: http.StatusInternalServerError}
 	}

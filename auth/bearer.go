@@ -30,7 +30,7 @@ type bearerClaims struct {
 	Roles map[string][]string `json:"rol"`
 }
 
-func makeBearerClaims(req *request, tok *oauth2.Token) (*bearerClaims, error) {
+func makeBearerClaims(ctx context.Context, req *request, tok *oauth2.Token) (*bearerClaims, error) {
 	accTok, err := jwt.ParseSigned(tok.AccessToken)
 	if err != nil {
 		log.WithField("token", tok.AccessToken).WithError(err).
@@ -44,7 +44,7 @@ func makeBearerClaims(req *request, tok *oauth2.Token) (*bearerClaims, error) {
 		log.WithError(err).Fatal("Unable to retrieve provider claims")
 	}
 
-	r, err := http.NewRequestWithContext(context.TODO(), "GET", provClaims.JWKsURI, nil)
+	r, err := http.NewRequestWithContext(ctx, "GET", provClaims.JWKsURI, nil)
 	if err != nil {
 		log.WithField("url", provClaims.JWKsURI).
 			WithError(err).Fatal("Unable to make request object")
@@ -86,7 +86,7 @@ func makeBearerClaims(req *request, tok *oauth2.Token) (*bearerClaims, error) {
 		return nil, errors.New("unable to extract ID token")
 	}
 
-	idToken, err := req.service.oidcVerifier.Verify(context.TODO(), rawIDToken)
+	idToken, err := req.service.oidcVerifier.Verify(ctx, rawIDToken)
 	if err != nil {
 		log.WithField("token", rawIDToken).WithError(err).
 			Error("Got invalid ID token")

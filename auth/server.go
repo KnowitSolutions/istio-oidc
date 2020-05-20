@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"crypto/sha512"
 	"github.com/apex/log"
 	"istio-keycloak/config"
@@ -34,13 +35,13 @@ func (srv *server) V3() *ServerV3 {
 	return &ServerV3{server: srv}
 }
 
-func (srv *server) AddService(cfg *config.Service) error {
+func (srv *server) AddService(ctx context.Context, cfg *config.Service) error {
 	err := cfg.Validate()
 	if err != nil {
 		return err
 	}
 
-	svc, err := newService(srv.KeycloakURL, cfg)
+	svc, err := newService(ctx, srv.KeycloakURL, cfg)
 	if err != nil {
 		return err
 	}

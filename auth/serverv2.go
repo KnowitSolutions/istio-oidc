@@ -18,7 +18,7 @@ type ServerV2 struct {
 	*server
 }
 
-func (srv *ServerV2) Check(_ context.Context, req *auth.CheckRequest) (*auth.CheckResponse, error) {
+func (srv *ServerV2) Check(ctx context.Context, req *auth.CheckRequest) (*auth.CheckResponse, error) {
 	r := &response{status: http.StatusInternalServerError}
 	fail := false
 
@@ -42,7 +42,7 @@ func (srv *ServerV2) Check(_ context.Context, req *auth.CheckRequest) (*auth.Che
 	dummy.Header.Add("Cookie", req.Attributes.Request.Http.Headers["cookie"])
 
 	if !fail {
-		r = srv.check(&request{
+		r = srv.check(ctx, &request{
 			url:           *loc,
 			cookies:       dummy.Cookies(),
 			authorization: *authz,

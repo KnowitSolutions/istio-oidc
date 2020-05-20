@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/rand"
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/cli"
@@ -30,7 +31,7 @@ func main() {
 		log.WithError(err).Fatal("Unable to generate cryptographic key")
 	}
 
-	err = srv.AddService(&config.Service{
+	err = srv.AddService(context.Background(), &config.Service{
 		Name:  "test",
 		Realm: "master",
 		OIDC: config.OIDC{
