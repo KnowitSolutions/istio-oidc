@@ -5,9 +5,9 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-// TODO: Add always deny option
 type authorization struct {
 	service string
+	blocked bool
 	roles   map[string][]string
 }
 
@@ -17,6 +17,7 @@ func marshallAuthz(authz *authorization) *structpb.Struct {
 	cfg := meta.GetFields()["config"].GetStructValue().GetFields()
 
 	cfg["service"] = mkStringValue(authz.service)
+	cfg["blocked"] = mkBoolValue(authz.blocked)
 
 	cfg["roles"] = mkStructValue(len(authz.roles))
 	dict := cfg["roles"].GetStructValue().GetFields()
@@ -36,10 +37,11 @@ func unmarshallAuthz(meta *structpb.Struct) (*authorization, error) {
 		return nil, errors.New("missing config")
 	}
 
+	authz := &authorization{}
 	cfg := meta.Fields["config"].GetStructValue().GetFields()
 
-	authz := &authorization{}
 	authz.service = cfg["service"].GetStringValue()
+	authz.blocked = cfg["blocked"].GetBoolValue()
 
 	dict := cfg["roles"].GetStructValue().GetFields()
 	authz.roles = make(map[string][]string, len(dict))
@@ -74,10 +76,19 @@ func mkListValue(size int) *structpb.Value {
 	}
 }
 
-func mkStringValue(str string) *structpb.Value {
+func mkBoolValue(value bool) *structpb.Value {
+	return &structpb.Value{
+		Kind: &structpb.Value_BoolValue{
+			BoolValue: value,
+		},
+	}
+}
+
+
+func mkStringValue(value string) *structpb.Value {
 	return &structpb.Value{
 		Kind: &structpb.Value_StringValue{
-			StringValue: str,
+			StringValue: value,
 		},
 	}
 }

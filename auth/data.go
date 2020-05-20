@@ -76,6 +76,11 @@ func (req *request) Fields() log.Fields {
 	maskQuery(query, "code")
 	loc.RawQuery = query.Encode()
 
+	service := ""
+	if req.service != nil {
+		service = req.service.Name
+	}
+
 	var bearer string
 	tok, err := jose.ParseSigned(req.bearer())
 	if err == nil {
@@ -85,7 +90,7 @@ func (req *request) Fields() log.Fields {
 	}
 
 	return log.Fields{
-		"service": req.service.Name,
+		"service": service,
 		"url":     loc.String(),
 		"bearer":  bearer,
 		"session": req.session != nil,

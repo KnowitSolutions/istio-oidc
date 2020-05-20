@@ -17,9 +17,15 @@ func main() {
 	}`
 
 	val := &_struct.Value{}
-	_ = jsonpb.UnmarshalString(str, val)
+	err := jsonpb.UnmarshalString(str, val)
+	if err != nil {
+		panic(err.Error())
+	}
 
-	bin, _ := proto.Marshal(val)
+	bin, err := proto.Marshal(val)
+	if err != nil {
+		panic(err.Error())
+	}
 
 	b64 := make([]byte, base64.StdEncoding.EncodedLen(len(bin)))
 	base64.StdEncoding.Encode(b64, bin)

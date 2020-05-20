@@ -21,9 +21,12 @@ func (srv *server) check(ctx context.Context, req *request) *response {
 	req.service = srv.services[req.authorization.service]
 	srv.servicesMu.RUnlock()
 
-	if req.service == nil {
-		log.WithFields(req).Warn("Invalid service")
-		return &response{status: http.StatusBadRequest}
+	if req.blocked {
+		log.WithFields(req).Info("Blocked request")
+		return &response{status: http.StatusForbidden}
+	} else if req.service == nil {
+		log.WithFields(req).Error("Invalid service")
+		return &response{status: http.StatusInternalServerError}
 	} else if req.url.Path == req.service.OIDC.CallbackPath {
 		return srv.finishOIDC(ctx, req)
 	} else if !srv.isAuthenticated(req) {
