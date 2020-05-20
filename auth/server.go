@@ -45,7 +45,9 @@ func (srv *server) AddService(cfg *config.Service) error {
 		return err
 	}
 
+	srv.servicesMu.Lock()
 	srv.services[cfg.Name] = svc
+	srv.servicesMu.Unlock()
 	return nil
 }
 

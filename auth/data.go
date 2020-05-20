@@ -21,7 +21,7 @@ type request struct {
 	service *service
 	session *session
 
-	roles  map[string][]string
+	authorization
 	claims bearerClaims
 }
 

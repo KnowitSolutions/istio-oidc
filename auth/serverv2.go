@@ -43,10 +43,9 @@ func (srv *ServerV2) Check(_ context.Context, req *auth.CheckRequest) (*auth.Che
 
 	if !fail {
 		r = srv.check(&request{
-			service: srv.services[authz.service],
-			url:     *loc,
-			cookies: dummy.Cookies(),
-			roles:   authz.roles,
+			url:           *loc,
+			cookies:       dummy.Cookies(),
+			authorization: *authz,
 		})
 	}
 

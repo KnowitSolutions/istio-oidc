@@ -17,6 +17,10 @@ type stateClaims struct {
 }
 
 func (srv *server) check(req *request) *response {
+	srv.servicesMu.RLock()
+	req.service = srv.services[req.authorization.service]
+	srv.servicesMu.RUnlock()
+
 	if req.service == nil {
 		log.WithFields(req).Warn("Invalid service")
 		return &response{status: http.StatusBadRequest}
