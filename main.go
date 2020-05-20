@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha512"
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/cli"
 	authv2 "github.com/envoyproxy/go-control-plane/envoy/service/auth/v2"
@@ -25,7 +26,7 @@ func main() {
 	srv.SessionCleaning.GracePeriod = 30 * time.Second
 	srv.Validate()
 
-	srv.Key = make([]byte, 64)
+	srv.Key = make([]byte, sha512.Size)
 	_, err := rand.Read(srv.Key)
 	if err != nil {
 		log.WithError(err).Fatal("Unable to generate cryptographic key")

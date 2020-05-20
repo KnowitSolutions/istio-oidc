@@ -11,6 +11,8 @@ import (
 	"time"
 )
 
+const subjectHeader = "x-subject"
+
 type stateClaims struct {
 	expirableImpl
 	Path string `json:"path"`
@@ -196,7 +198,8 @@ func (srv *server) authorize(req *request) *response {
 
 	if len(missing) == 0 {
 		log.WithFields(req).Info("Allowing request")
-		return &response{status: http.StatusOK}
+		headers := map[string]string{subjectHeader: req.claims.Subject}
+		return &response{status: http.StatusOK, headers: headers}
 	} else {
 		log.WithField("missingRoles", strings.Join(missing, ",")).
 			WithFields(req).Info("Denying request")
