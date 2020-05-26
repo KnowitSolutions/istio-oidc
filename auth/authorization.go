@@ -7,7 +7,6 @@ import (
 
 type authorization struct {
 	service string
-	blocked bool
 	roles   map[string][]string
 }
 
@@ -17,7 +16,6 @@ func marshallAuthz(authz *authorization) *structpb.Struct {
 	cfg := meta.GetFields()["config"].GetStructValue().GetFields()
 
 	cfg["service"] = mkStringValue(authz.service)
-	cfg["blocked"] = mkBoolValue(authz.blocked)
 
 	cfg["roles"] = mkStructValue(len(authz.roles))
 	dict := cfg["roles"].GetStructValue().GetFields()
@@ -41,7 +39,6 @@ func unmarshallAuthz(meta *structpb.Struct) (*authorization, error) {
 	cfg := meta.Fields["config"].GetStructValue().GetFields()
 
 	authz.service = cfg["service"].GetStringValue()
-	authz.blocked = cfg["blocked"].GetBoolValue()
 
 	dict := cfg["roles"].GetStructValue().GetFields()
 	authz.roles = make(map[string][]string, len(dict))
@@ -72,14 +69,6 @@ func mkListValue(size int) *structpb.Value {
 			ListValue: &structpb.ListValue{
 				Values: make([]*structpb.Value, size),
 			},
-		},
-	}
-}
-
-func mkBoolValue(value bool) *structpb.Value {
-	return &structpb.Value{
-		Kind: &structpb.Value_BoolValue{
-			BoolValue: value,
 		},
 	}
 }
