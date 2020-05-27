@@ -1,11 +1,11 @@
 package auth
 
 import (
-	"context"
 	"github.com/apex/log"
 	"github.com/coreos/go-oidc"
 	"golang.org/x/oauth2"
 	"gopkg.in/square/go-jose.v2"
+	"istio-keycloak/config"
 	"net/http"
 	"net/url"
 	"time"
@@ -14,14 +14,13 @@ import (
 const bearerCookie = "bearer"
 
 type request struct {
-	ctx     context.Context
 	url     url.URL
 	cookies []*http.Cookie
 
 	service *service
 	session *session
 
-	authorization
+	roles  config.Roles
 	claims bearerClaims
 }
 

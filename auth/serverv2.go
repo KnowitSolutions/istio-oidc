@@ -3,7 +3,6 @@ package auth
 import (
 	"context"
 	"fmt"
-	"github.com/apex/log"
 	core "github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
 	auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v2"
 	types "github.com/envoyproxy/go-control-plane/envoy/type"
@@ -11,7 +10,6 @@ import (
 	"google.golang.org/genproto/googleapis/rpc/code"
 	"google.golang.org/genproto/googleapis/rpc/status"
 	"net/http"
-	"net/url"
 )
 
 type ServerV2 struct {
@@ -19,34 +17,19 @@ type ServerV2 struct {
 }
 
 func (srv *ServerV2) Check(ctx context.Context, req *auth.CheckRequest) (*auth.CheckResponse, error) {
-	r := &response{status: http.StatusInternalServerError}
-	fail := false
-
-	meta := req.Attributes.MetadataContext.FilterMetadata["istio-keycloak"]
-	authz, err := unmarshallAuthz(meta)
-	if err != nil {
-		fail = true
-		log.WithError(err).Warn("Unable to unmarshall authorization requirements")
-	}
-
 	proto := req.Attributes.Request.Http.Headers["x-forwarded-proto"]
 	host := req.Attributes.Request.Http.Host
 	path := req.Attributes.Request.Http.Path
-	loc, err := url.Parse(fmt.Sprintf("%s://%s%s", proto, host, path))
-	if err != nil {
-		fail = true
-		log.WithError(err).Error("Unable to parse request URL")
-	}
+	addr := fmt.Sprintf("%s://%s%s", proto, host, path)
+	cookies := req.Attributes.Request.Http.Headers["cookie"]
+	meta := req.Attributes.ContextExtensions
+	data, err := srv.newRequest(addr, cookies, meta)
 
-	dummy := http.Request{Header: http.Header{}}
-	dummy.Header.Add("Cookie", req.Attributes.Request.Http.Headers["cookie"])
-
-	if !fail {
-		r = srv.check(ctx, &request{
-			url:           *loc,
-			cookies:       dummy.Cookies(),
-			authorization: *authz,
-		})
+	var r *response
+	if err == nil {
+		r = srv.check(ctx, data)
+	} else {
+		r = &response{status: http.StatusInternalServerError}
 	}
 
 	res := &auth.CheckResponse{Status: &status.Status{}}

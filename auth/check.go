@@ -19,10 +19,6 @@ type stateClaims struct {
 }
 
 func (srv *server) check(ctx context.Context, req *request) *response {
-	srv.servicesMu.RLock()
-	req.service = srv.services[req.authorization.service]
-	srv.servicesMu.RUnlock()
-
 	if req.service == nil {
 		log.WithFields(req).Error("Invalid service")
 		return &response{status: http.StatusInternalServerError}

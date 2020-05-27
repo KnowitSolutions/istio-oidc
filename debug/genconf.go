@@ -1,34 +1,30 @@
 package main
 
 import (
+	"bytes"
 	"encoding/base64"
-	"github.com/golang/protobuf/jsonpb"
-	"github.com/golang/protobuf/proto"
-	_struct "github.com/golang/protobuf/ptypes/struct"
+	"encoding/gob"
+	"istio-keycloak/config"
 )
 
 func main() {
-	str := `{
-		"service": "test",
-		"roles": {
-			"": ["test1"],
-			"test": ["test2"]
-		}
-	}`
-
-	val := &_struct.Value{}
-	err := jsonpb.UnmarshalString(str, val)
-	if err != nil {
-		panic(err.Error())
+	roles := &config.Roles{
+		"": {"global"},
+		"test": {"local"},
 	}
 
-	bin, err := proto.Marshal(val)
+	buf := bytes.NewBuffer(nil)
+	b64 := base64.NewEncoder(base64.StdEncoding, buf)
+	enc := gob.NewEncoder(b64)
+	err := enc.Encode(roles)
 	if err != nil {
-		panic(err.Error())
+		panic(err)
 	}
 
-	b64 := make([]byte, base64.StdEncoding.EncodedLen(len(bin)))
-	base64.StdEncoding.Encode(b64, bin)
+	err = b64.Close()
+	if err != nil {
+		panic(err)
+	}
 
-	print(string(b64))
+	print(buf.String())
 }

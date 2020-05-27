@@ -8,7 +8,7 @@ static_resources:
         - filters:
             - name: envoy.filters.network.http_connection_manager
               typed_config:
-                '@type': type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                '@type': type.googleapis.com/envoy.config.filter.network.http_connection_manager.v2.HttpConnectionManager
                 stat_prefix: root
                 route_config:
                   virtual_hosts:
@@ -16,35 +16,41 @@ static_resources:
                       domains: ['*']
                       routes:
                         - match:
+                            prefix: /roles
+                          route:
+                            cluster: upstream
+                          typed_per_filter_config:
+                            envoy.filters.http.ext_authz:
+                              '@type': type.googleapis.com/envoy.config.filter.http.ext_authz.v2.ExtAuthzPerRoute
+                              check_settings:
+                                context_extensions:
+                                  roles: Fv+DBAEBBVJvbGVzAf+EAAEMAf+CAAAM/4ECAQL/ggABDAAAGf+EAAIAAQZnbG9iYWwEdGVzdAEFbG9jYWw=
+                        - match:
+                            prefix: /disabled
+                          route:
+                            cluster: upstream
+                          typed_per_filter_config:
+                            envoy.filters.http.ext_authz:
+                              '@type': type.googleapis.com/envoy.config.filter.http.ext_authz.v2.ExtAuthzPerRoute
+                              disabled: true
+                        - match:
                             prefix: /
                           route:
                             cluster: upstream
+                      typed_per_filter_config:
+                        envoy.filters.http.ext_authz:
+                          '@type': type.googleapis.com/envoy.config.filter.http.ext_authz.v2.ExtAuthzPerRoute
+                          check_settings:
+                            context_extensions:
+                              service: test
                 http_filters:
-                  - name: envoy.filters.http.header_to_metadata
-                    typed_config:
-                      '@type': type.googleapis.com/envoy.extensions.filters.http.header_to_metadata.v3.Config
-                      request_rules:
-                        - header: dummy
-                          on_header_present:
-                            metadata_namespace: istio-keycloak
-                            key: config
-                            value: KkYKMQoFcm9sZXMSKComCg8KABILMgkKBxoFdGVzdDEKEwoEdGVzdBILMgkKBxoFdGVzdDIKEQoHc2VydmljZRIGGgR0ZXN0
-                            type: PROTOBUF_VALUE
-                            encode: BASE64
-                          on_header_missing:
-                            metadata_namespace: istio-keycloak
-                            key: config
-                            value: KkYKMQoFcm9sZXMSKComCg8KABILMgkKBxoFdGVzdDEKEwoEdGVzdBILMgkKBxoFdGVzdDIKEQoHc2VydmljZRIGGgR0ZXN0
-                            type: PROTOBUF_VALUE
-                            encode: BASE64
                   - name: envoy.filters.http.ext_authz
                     typed_config:
-                      '@type': type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthz
-                      grpc_service: # TODO: Default timeout of 200ms might be too little when dealing with Keycloak
+                      '@type': type.googleapis.com/envoy.config.filter.http.ext_authz.v2.ExtAuthz
+                      grpc_service:
                         envoy_grpc:
                           cluster_name: ext-authz
-                      metadata_context_namespaces:
-                        - istio-keycloak
+                        timeout: 86400s
                   - name: envoy.filters.http.router
     - address:
         socket_address:
@@ -54,7 +60,7 @@ static_resources:
         - filters:
             - name: envoy.filters.network.http_connection_manager
               typed_config:
-                '@type': type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                '@type': type.googleapis.com/envoy.config.filter.network.http_connection_manager.v2.HttpConnectionManager
                 stat_prefix: root
                 route_config:
                   virtual_hosts:

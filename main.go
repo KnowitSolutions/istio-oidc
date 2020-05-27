@@ -7,7 +7,6 @@ import (
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/cli"
 	authv2 "github.com/envoyproxy/go-control-plane/envoy/service/auth/v2"
-	authv3 "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	"google.golang.org/grpc"
 	"istio-keycloak/auth"
 	"istio-keycloak/config"
@@ -24,7 +23,7 @@ func main() {
 	srv.KeycloakURL = "http://keycloak.localhost"
 	srv.SessionCleaning.Interval = 30 * time.Second
 	srv.SessionCleaning.GracePeriod = 30 * time.Second
-	srv.Validate()
+	srv.Start()
 
 	srv.Key = make([]byte, sha512.Size)
 	_, err := rand.Read(srv.Key)
@@ -37,7 +36,7 @@ func main() {
 		Realm: "master",
 		OIDC: config.OIDC{
 			ClientID:     "test",
-			ClientSecret: "5ca4509d-cf9b-47e9-9119-cf72cf7a5a44",
+			ClientSecret: "be7457c0-a723-4375-967c-17eb7acc53fc",
 			CallbackPath: "/oidc/callback",
 		},
 	})
@@ -55,10 +54,9 @@ func main() {
 
 	grpcServer := grpc.NewServer()
 	authv2.RegisterAuthorizationServer(grpcServer, srv.V2())
-	authv3.RegisterAuthorizationServer(grpcServer, srv.V3())
 
 	err = grpcServer.Serve(lis)
 	if err != nil {
-		log.WithError(err).Fatal("Unable to start gRPC server ")
+		log.WithError(err).Fatal("Unable to start gRPC server")
 	}
 }
