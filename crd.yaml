@@ -50,7 +50,7 @@ spec:
                     pattern: ^\/[A-Za-z0-9\-._~!$&'()*+,;=:@\/%]*$
                 required:
                 - credentialsSecretRef
-              wildcardRouteKey:
+              globalRoleNamespaceKey:
                 type: string
               routes:
                 type: object

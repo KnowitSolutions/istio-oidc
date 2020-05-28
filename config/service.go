@@ -4,7 +4,7 @@ type Service struct {
 	Name string
 	Realm string
 	OIDC OIDC
-	// TODO: Resources
+	Routes Routes
 }
 
 type OIDC struct {
@@ -12,6 +12,15 @@ type OIDC struct {
 	ClientSecret string
 	CallbackPath string
 }
+
+type Routes map[string]Route
+
+type Route struct {
+	EnableAuthz bool
+	Roles Roles
+}
+
+type Roles map[string][]string
 
 // TODO: Remember to log all errors here
 func (cfg *Service) Validate() error {
