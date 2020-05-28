@@ -39,6 +39,10 @@ spec:
                     properties:
                       name:
                         type: string
+                      clientIDKey:
+                        type: string
+                      clientSecretKey:
+                        type: string
                     required:
                     - name
                   callbackPath:
@@ -46,28 +50,26 @@ spec:
                     pattern: ^\/[A-Za-z0-9\-._~!$&'()*+,;=:@\/%]*$
                 required:
                 - credentialsSecretRef
-              globalKey:
+              wildcardRouteKey:
                 type: string
               routes:
-                type: array
-                items:
+                type: object
+                additionalProperties:
                   type: object
                   properties:
-                    name:
-                      type: string
                     roles:
                       type: object
                       additionalProperties:
                         type: array
                         items:
                           type: string
-                    disableAuth:
+                    disableAccessPolicy:
                       type: boolean
                   oneOf:
                   - required:
                     - roles
                   - required:
-                    - disableAuth
+                    - disableAccessPolicy
             required:
             - gateway
             - realm
