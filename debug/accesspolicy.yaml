@@ -1,0 +1,21 @@
+apiVersion: krsdev.app/v1
+kind: AccessPolicy
+metadata:
+  name: test
+  namespace: base
+spec:
+  gateway: test
+  realm: test
+  oidc:
+    credentialsSecretRef:
+      name: test
+    callbackPath: /asdasda
+  routes:
+    '*':
+      roles:
+        '*':
+        - global
+        test:
+        - local
+    test:
+      disableAccessPolicy: true

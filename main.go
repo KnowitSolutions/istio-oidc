@@ -32,11 +32,11 @@ func main() {
 	}
 
 	err = srv.AddService(context.Background(), &config.Service{
-		Name:  "test",
+		Name:  "jaeger",
 		Realm: "master",
 		OIDC: config.OIDC{
-			ClientID:     "test",
-			ClientSecret: "be7457c0-a723-4375-967c-17eb7acc53fc",
+			ClientID:     "jaeger",
+			ClientSecret: "742c63fc-1ead-43ea-87c4-ffd4d6a1550c",
 			CallbackPath: "/oidc/callback",
 		},
 	})
