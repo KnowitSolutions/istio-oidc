@@ -34,6 +34,7 @@ func (srv *ServerV2) Check(ctx context.Context, req *auth.CheckRequest) (*auth.C
 
 	res := &auth.CheckResponse{Status: &status.Status{}}
 
+	// TODO: Clean up which codes are returned
 	switch r.status {
 	case http.StatusOK:
 		res.Status.Code = int32(code.Code_OK)

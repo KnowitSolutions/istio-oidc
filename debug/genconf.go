@@ -7,7 +7,7 @@ import (
 	"istio-keycloak/config"
 )
 
-// Generates roles config string for use in envoy.yaml or envoyfilter.yaml
+// Generates roles config string for use in envoyfilter.yaml
 func main() {
 	roles := &config.Roles{
 		"": {"global"},
