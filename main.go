@@ -11,6 +11,7 @@ import (
 	"istio-keycloak/auth"
 	"istio-keycloak/config"
 	"istio-keycloak/controller"
+	"istio-keycloak/logging"
 	"k8s.io/apimachinery/pkg/runtime"
 	"net"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -28,6 +29,8 @@ func main() {
 }
 
 func startCtrl() {
+	ctrl.SetLogger(logging.Log)
+
 	cfg, err := ctrl.GetConfig()
 	if err != nil {
 		log.WithError(err).Fatal("Unable to load Kubernetes config")

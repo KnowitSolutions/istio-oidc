@@ -12,7 +12,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-// TODO: Attach manager's log to Apex log
 type Controller struct {
 	client.Client
 }
@@ -38,7 +37,6 @@ func (r *Controller) SetupWithManager(mgr ctrl.Manager) {
 			&handler.EnqueueRequestsFromMapFunc{ToRequests: &GatewayMapper{}}).
 		Owns(&istionetworking.EnvoyFilter{}).
 		Complete(&Controller{})
-
 	if err != nil {
 		log.WithError(err).Fatal("Unable to create controller")
 	}
@@ -47,8 +45,7 @@ func (r *Controller) SetupWithManager(mgr ctrl.Manager) {
 func (r *Controller) Reconcile(req reconcile.Request) (reconcile.Result, error) {
 	log.WithFields(log.Fields{
 		"namespace": req.Namespace,
-		"name": req.Name,
+		"name":      req.Name,
 	}).Info("Starting reconciliation")
 	return reconcile.Result{}, nil
 }
-
