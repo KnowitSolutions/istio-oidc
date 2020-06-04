@@ -8,6 +8,7 @@ require (
 	github.com/envoyproxy/go-control-plane v0.9.5
 	github.com/fatih/color v1.9.0 // indirect
 	github.com/go-logr/logr v0.1.0
+	github.com/gogo/protobuf v1.3.1
 	github.com/golang/protobuf v1.4.2
 	github.com/json-iterator/go v1.1.9 // indirect
 	github.com/mattn/go-colorable v0.1.6 // indirect
@@ -18,7 +19,9 @@ require (
 	google.golang.org/grpc v1.29.1
 	gopkg.in/square/go-jose.v2 v2.5.1
 	gopkg.in/yaml.v2 v2.3.0 // indirect
+	istio.io/api v0.0.0-20200518203817-6d29a38039bd
 	istio.io/client-go v0.0.0-20200528222059-5465d5e00a32
+	k8s.io/api v0.18.3
 	k8s.io/apiextensions-apiserver v0.18.3 // indirect
 	k8s.io/apimachinery v0.18.3
 	k8s.io/utils v0.0.0-20200529193333-24a76e807f40 // indirect

@@ -1,14 +1,14 @@
 apiVersion: krsdev.app/v1
 kind: AccessPolicy
 metadata:
-  name: test
+  name: jaeger
   namespace: base
 spec:
-  gateway: test
-  realm: test
+  gateway: jaeger
+  realm: master
   oidc:
     credentialsSecretRef:
-      name: test
+      name: jaeger
     callbackPath: /asdasda
   routes:
     '*':
@@ -19,3 +19,12 @@ spec:
         - local
     test:
       disableAccessPolicy: true
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: jaeger
+  namespace: base
+data:
+  clientID: amFlZ2Vy
+  clientSecret: NzQyYzYzZmMtMWVhZC00M2VhLTg3YzQtZmZkNGQ2YTE1NTBj

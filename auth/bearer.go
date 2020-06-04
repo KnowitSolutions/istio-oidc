@@ -8,6 +8,7 @@ import (
 	"golang.org/x/oauth2"
 	"gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/jwt"
+	"istio-keycloak/config"
 	"net/http"
 )
 
@@ -96,7 +97,7 @@ func makeBearerClaims(ctx context.Context, req *request, tok *oauth2.Token) (*be
 	claims := &bearerClaims{}
 	claims.Subject = idToken.Subject
 	claims.Roles = make(map[string][]string, len(accClaims.ResourceAccess) + 1)
-	claims.Roles[""] = accClaims.RealmAccess.Roles
+	claims.Roles[config.GlobalRoleKey] = accClaims.RealmAccess.Roles
 	for k, v := range accClaims.ResourceAccess {
 		claims.Roles[k] = v.Roles
 	}
