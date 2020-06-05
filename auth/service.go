@@ -3,10 +3,10 @@ package auth
 import (
 	"context"
 	"fmt"
-	"github.com/apex/log"
 	"github.com/coreos/go-oidc"
 	"golang.org/x/oauth2"
 	"istio-keycloak/config"
+	"istio-keycloak/logging/errors"
 )
 
 type service struct {
@@ -20,9 +20,7 @@ func newService(ctx context.Context, keycloak string, cfg *config.Service) (*ser
 	iss := fmt.Sprintf("%s/auth/realms/%s", keycloak, cfg.Realm)
 	prov, err := oidc.NewProvider(ctx, iss)
 	if err != nil {
-		log.WithField("issuer", iss).WithError(err).
-			Error("Unable to fetch OIDC provider config")
-		return nil, err
+		return nil, errors.Wrap(err, "unable to fetch OIDC provider config", "issuer", iss)
 	}
 
 	oauth2cfg := oauth2.Config{

@@ -2,10 +2,10 @@ package controller
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/apex/log"
 	"istio-keycloak/api/v1"
+	"istio-keycloak/logging/errors"
 	istionetworking "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	core "k8s.io/api/core/v1"
 	"reflect"
@@ -65,7 +65,6 @@ func (c *Controller) Reconcile(_ reconcile.Request) (reconcile.Result, error) {
 	log.Info("Collecting AccessPolicies")
 	aps, err := c.getAccessPolicies(ctx)
 	if err != nil {
-		log.WithError(err).Error("Unable to fetch AccessPolicies")
 		return reconcile.Result{}, err
 	}
 
@@ -75,7 +74,7 @@ func (c *Controller) Reconcile(_ reconcile.Request) (reconcile.Result, error) {
 		scope.Info("Collecting dependencies")
 		svc, err := c.collectService(ctx, &ap)
 		if err != nil {
-			scope.WithError(err).Error("Unable collect dependencies")
+			scope.WithError(err).Error("Skipping reconciliation")
 			partial = true
 		} else {
 			svcs = append(svcs, svc)
@@ -108,20 +107,20 @@ func (c *Controller) Reconcile(_ reconcile.Request) (reconcile.Result, error) {
 func (c *Controller) getAccessPolicies(ctx context.Context) ([]api.AccessPolicy, error) {
 	aps := api.AccessPolicyList{}
 	err := c.List(ctx, &aps)
-	return aps.Items, err
+	return aps.Items, errors.Wrap(err, "unable to fetch AccessPolicies")
 }
 
 func (c *Controller) collectService(ctx context.Context, ap *api.AccessPolicy) (service, error) {
 	cred := core.Secret{}
 	err := c.Get(ctx, ap.CredentialsKey(), &cred)
 	if err != nil {
-		return service{}, err
+		return service{}, errors.Wrap(err, "unable to fetch credentials")
 	}
 
 	gw := istionetworking.Gateway{}
 	err = c.Get(ctx, ap.GatewayKey(), &gw)
 	if err != nil {
-		return service{}, err
+		return service{}, errors.Wrap(err, "unable to fetch gateway")
 	}
 	c.gwfilt.track(&gw)
 
@@ -149,12 +148,15 @@ func ingresses(svcs []service) []*ingress {
 }
 
 func (c *Controller) reconcileEnvoyFilter(ctx context.Context, ingress ingress, svcs []service) (bool, error) {
-	next := mkEnvoyFilter(ingress, svcs)
+	next, err := mkEnvoyFilter(ingress, svcs)
+	if err != nil {
+		return true, errors.Wrap(err, "unable to construct next EnvoyFilter")
+	}
 
 	list := istionetworking.EnvoyFilterList{}
-	err := c.List(ctx, &list, client.InNamespace(ingress.namespace))
+	err = c.List(ctx, &list, client.InNamespace(ingress.namespace))
 	if err != nil {
-		return true, err
+		return true, errors.Wrap(err, "unable to fetch EnvoyFilters")
 	}
 
 	var curr *istionetworking.EnvoyFilter
@@ -164,9 +166,12 @@ func (c *Controller) reconcileEnvoyFilter(ctx context.Context, ingress ingress, 
 		} else if !reflect.DeepEqual(ef.Spec.GetWorkloadSelector().GetLabels(), ingress.selector) {
 			continue
 		} else if curr != nil {
+			id := fmt.Sprintf("%s/%s", ef.Namespace, ef.Name)
+			log.WithField("EnvoyFilter", id).Info("Deleting duplicate EnvoyFilter")
+
 			err = c.Delete(ctx, &ef)
 			if err != nil {
-				return true, err
+				return true, errors.Wrap(err, "unable to delete duplicate", "EnvoyFilter", id)
 			}
 		} else {
 			curr = &ef
@@ -176,12 +181,14 @@ func (c *Controller) reconcileEnvoyFilter(ctx context.Context, ingress ingress, 
 	if curr == nil {
 		err = c.Create(ctx, next)
 		c.effilt.track(next)
-		return true, err
+		return true, errors.Wrap(err, "unable to create EnvoyFilter")
 	} else if !reflect.DeepEqual(curr.Spec, next.Spec) {
 		curr.Spec = next.Spec
 		err = c.Update(ctx, curr)
 		c.effilt.track(curr)
-		return true, err
+
+		id := fmt.Sprintf("%s/%s", curr.Namespace, curr.Name)
+		return true, errors.Wrap(err, "unable to update EnvoyFilter", "EnvoyFilter", id)
 	} else {
 		c.effilt.track(curr)
 		return false, nil

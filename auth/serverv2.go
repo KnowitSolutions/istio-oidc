@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"fmt"
+	"github.com/apex/log"
 	core "github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
 	auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v2"
 	types "github.com/envoyproxy/go-control-plane/envoy/type"
@@ -29,6 +30,7 @@ func (srv *ServerV2) Check(ctx context.Context, req *auth.CheckRequest) (*auth.C
 	if err == nil {
 		r = srv.check(ctx, data)
 	} else {
+		log.WithError(err).Error("Unable to construct request object")
 		r = &response{status: http.StatusInternalServerError}
 	}
 

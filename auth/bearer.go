@@ -3,12 +3,11 @@ package auth
 import (
 	"context"
 	"encoding/json"
-	"errors"
-	"github.com/apex/log"
 	"golang.org/x/oauth2"
 	"gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/jwt"
 	"istio-keycloak/config"
+	"istio-keycloak/logging/errors"
 	"net/http"
 )
 
@@ -34,69 +33,51 @@ type bearerClaims struct {
 func makeBearerClaims(ctx context.Context, req *request, tok *oauth2.Token) (*bearerClaims, error) {
 	accTok, err := jwt.ParseSigned(tok.AccessToken)
 	if err != nil {
-		log.WithField("token", tok.AccessToken).WithError(err).
-			Error("Unable to parse access token")
-		return nil, err
+		return nil, errors.Wrap(err, "unable to parse access token", "token", tok.AccessToken)
 	}
 
 	provClaims := &providerClaims{}
 	err = req.service.oidcProvider.Claims(provClaims)
 	if err != nil {
-		log.WithError(err).Fatal("Unable to retrieve provider claims")
+		return nil, errors.Wrap(err, "unable to retrieve provider claims")
 	}
 
 	r, err := http.NewRequestWithContext(ctx, "GET", provClaims.JWKsURI, nil)
 	if err != nil {
-		log.WithField("url", provClaims.JWKsURI).
-			WithError(err).Fatal("Unable to make request object")
+		return nil, errors.Wrap(err, "unable to make request object", "url", provClaims.JWKsURI)
 	}
 
 	res, err := http.DefaultClient.Do(r)
 	if err != nil {
-		log.WithField("url", provClaims.JWKsURI).
-			WithError(err).Error("Unable to retrieve JWKs")
-		return nil, err
+		return nil, errors.Wrap(err, "unable to retrieve JWKs", "url", provClaims.JWKsURI)
 	}
-
-	defer func() {
-		err := res.Body.Close()
-		if err != nil {
-			log.WithError(err).Fatal("Unable to clean up response body")
-		}
-	}()
+	defer func() { _ = res.Body.Close() }()
 
 	jwks := &jose.JSONWebKeySet{}
 	err = json.NewDecoder(res.Body).Decode(jwks)
 	if err != nil {
-		log.WithField("url", provClaims.JWKsURI).
-			WithError(err).Error("Unable to parse JWKs")
-		return nil, err
+		return nil, errors.Wrap(err, "unable to parse JWKs", "url", provClaims.JWKsURI)
 	}
 
 	accClaims := &accessClaims{}
 	err = accTok.Claims(jwks, accClaims)
 	if err != nil {
-		log.WithField("token", tok).WithError(err).
-			Error("Unable to deserialize access token")
-		return nil, err
+		return nil, errors.Wrap(err, "unable to deserialize access token", "token", tok)
 	}
 
 	rawIDToken, ok := tok.Extra("id_token").(string)
 	if !ok {
-		log.Error("Unable to extract ID token")
 		return nil, errors.New("unable to extract ID token")
 	}
 
 	idToken, err := req.service.oidcVerifier.Verify(ctx, rawIDToken)
 	if err != nil {
-		log.WithField("token", rawIDToken).WithError(err).
-			Error("Got invalid ID token")
-		return nil, err
+		return nil, errors.Wrap(err, "got invalid ID token", "token", rawIDToken)
 	}
 
 	claims := &bearerClaims{}
 	claims.Subject = idToken.Subject
-	claims.Roles = make(map[string][]string, len(accClaims.ResourceAccess) + 1)
+	claims.Roles = make(map[string][]string, len(accClaims.ResourceAccess)+1)
 	claims.Roles[config.GlobalRoleKey] = accClaims.RealmAccess.Roles
 	for k, v := range accClaims.ResourceAccess {
 		claims.Roles[k] = v.Roles

@@ -18,6 +18,7 @@ import (
 	"time"
 )
 
+// TODO: errors.Wrap() and propagate. Only log at top level
 // TODO: Test OIDC with internal .svc k8s address from /etc/hosts
 // TODO: Forward tracing headers from gRPC when calling HTTP services
 func main() {

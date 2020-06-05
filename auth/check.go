@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/apex/log"
 	"golang.org/x/oauth2"
+	"istio-keycloak/logging/errors"
 	"net/http"
 	"strings"
 	"time"
@@ -41,6 +42,7 @@ func (srv *server) isAuthenticated(req *request) bool {
 
 	err := parseToken(srv.Key, token, &req.claims)
 	if err != nil {
+		log.WithError(err).Error("Unable to check authentication")
 		return false
 	}
 
@@ -56,7 +58,11 @@ func (srv *server) startOIDC(req *request) *response {
 	log.WithFields(req).Info("Starting OIDC")
 
 	claims := &stateClaims{Path: req.url.Path}
-	tok := makeToken(srv.Key, claims, time.Time{})
+	tok, err := makeToken(srv.Key, claims, time.Time{})
+	if err != nil {
+		log.WithError(err).Error("Unable to start OIDC flow")
+		return &response{status: http.StatusInternalServerError}
+	}
 
 	cfg := req.oauth2()
 	loc := cfg.AuthCodeURL(tok)
@@ -78,18 +84,19 @@ func (srv *server) finishOIDC(ctx context.Context, req *request) *response {
 	claims := &stateClaims{}
 	err := parseToken(srv.Key, query["state"][0], claims)
 	if err != nil {
+		log.WithError(err).Error("Unable to finnish OIDC flow")
 		return &response{status: http.StatusBadRequest}
 	}
 
 	cfg := req.oauth2()
 	tok, err := cfg.Exchange(ctx, query["code"][0])
 	if err != nil {
-		log.WithFields(log.Fields{
+		err = errors.Wrap(err,"failed authorization code exchange")
+		log.WithFields(req).WithFields(log.Fields{
 			"clientId": cfg.ClientID,
-			"url":      cfg.Endpoint.TokenURL,
-			"roles":    strings.Join(cfg.Scopes, ","),
-		}).WithError(err).Error("Unable to exchange authorization code")
-
+			"url": cfg.Endpoint.TokenURL,
+			"roles": strings.Join(cfg.Scopes, ","),
+		}).WithError(err).Error("Unable to finnish OIDC flow")
 		return &response{status: http.StatusForbidden}
 	}
 
@@ -104,6 +111,7 @@ func (srv *server) updateToken(ctx context.Context, req *request) *response {
 
 	tok, err := src.Token()
 	if err != nil {
+		err = errors.Wrap(err, "failed getting access token")
 		log.WithFields(req).WithError(err).Warn("Unable to refresh access token")
 		return &response{status: http.StatusForbidden}
 	}
@@ -115,10 +123,16 @@ func (srv *server) updateToken(ctx context.Context, req *request) *response {
 func (srv *server) setToken(ctx context.Context, req *request, token *oauth2.Token, uri string) *response {
 	claims, err := makeBearerClaims(ctx, req, token)
 	if err != nil {
+		log.WithFields(req).WithError(err).Error("Unable to set access token")
 		return &response{status: http.StatusInternalServerError}
 	}
 
-	tok := makeToken(srv.Key, claims, token.Expiry)
+	tok, err := makeToken(srv.Key, claims, token.Expiry)
+	if err != nil {
+		log.WithFields(req).WithError(err).Error("Unable to set access token")
+		return &response{status: http.StatusInternalServerError}
+	}
+
 	hash := sha512.Sum512([]byte(tok))
 	srv.sessionsMu.Lock()
 	srv.sessions[hash] = &session{

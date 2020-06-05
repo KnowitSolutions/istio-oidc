@@ -3,6 +3,7 @@ package controller
 import (
 	"fmt"
 	"istio-keycloak/config"
+	"istio-keycloak/logging/errors"
 	istionetworkingapi "istio.io/api/networking/v1alpha3"
 	istionetworking "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	"time"
@@ -16,7 +17,7 @@ var (
 	ExtAuthzTimeout     time.Duration
 )
 
-func mkEnvoyFilter(ingress ingress, svcs []service) *istionetworking.EnvoyFilter {
+func mkEnvoyFilter(ingress ingress, svcs []service) (*istionetworking.EnvoyFilter, error) {
 	count := 2
 	for _, svc := range svcs {
 		if svc.ingress.key() == ingress.key() {
@@ -26,7 +27,7 @@ func mkEnvoyFilter(ingress ingress, svcs []service) *istionetworking.EnvoyFilter
 
 	ef := &istionetworking.EnvoyFilter{}
 	ef.Namespace = IstioRootNamespace
-	ef.GenerateName = EnvoyFilterName
+	ef.GenerateName = EnvoyFilterName + "-"
 	ef.Spec.WorkloadSelector = &istionetworkingapi.WorkloadSelector{}
 	ef.Spec.WorkloadSelector.Labels = ingress.selector
 	ef.Spec.ConfigPatches = make([]*istionetworkingapi.EnvoyFilter_EnvoyConfigObjectPatch, 0, count)
@@ -53,8 +54,11 @@ func mkEnvoyFilter(ingress ingress, svcs []service) *istionetworking.EnvoyFilter
 		cfg := make(map[string]interface{}, 2)
 		if svc.Global.EnableAuthz {
 			cfg[config.ServiceKey] = svc.Name
-			if len(svc.Global.Roles) > 0 {
-				cfg[config.RolesKey] = svc.Global.Roles.Encode()
+			roles, err := svc.Global.Roles.Encode()
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to construct EnvoyFilter")
+			} else if len(svc.Global.Roles) > 0 {
+				cfg[config.RolesKey] = roles
 			}
 		}
 
@@ -69,11 +73,12 @@ func mkEnvoyFilter(ingress ingress, svcs []service) *istionetworking.EnvoyFilter
 			for route, routeData := range svc.Routes {
 				cfg := make(map[string]interface{}, 2)
 				if routeData.EnableAuthz {
-					if !svc.Global.EnableAuthz {
-						cfg[config.ServiceKey] = svc.Name
-					}
-					if len(routeData.Roles) > 0 {
-						cfg[config.RolesKey] = routeData.Roles.Encode()
+					cfg[config.ServiceKey] = svc.Name
+					roles, err := routeData.Roles.Encode()
+					if err != nil {
+						return nil, errors.Wrap(err, "failed to construct EnvoyFilter")
+					} else if len(routeData.Roles) > 0 {
+						cfg[config.RolesKey] = roles
 					}
 				}
 
@@ -87,7 +92,7 @@ func mkEnvoyFilter(ingress ingress, svcs []service) *istionetworking.EnvoyFilter
 		}
 	}
 
-	return ef
+	return ef, nil
 }
 
 func extAuthz(patch *istionetworkingapi.EnvoyFilter_EnvoyConfigObjectPatch) {

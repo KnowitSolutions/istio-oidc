@@ -5,9 +5,9 @@ import (
 	"crypto/sha512"
 	"encoding/base64"
 	"encoding/gob"
-	"errors"
 	"github.com/apex/log"
 	"istio-keycloak/config"
+	"istio-keycloak/logging/errors"
 	"net/http"
 	"net/url"
 	"strings"
@@ -38,12 +38,12 @@ func (srv *server) V2() *ServerV2 {
 func (srv *server) AddService(ctx context.Context, cfg *config.Service) error {
 	err := cfg.Validate()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "unable to add service")
 	}
 
 	svc, err := newService(ctx, srv.KeycloakURL, cfg)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "unable to add service")
 	}
 
 	srv.servicesMu.Lock()
@@ -60,19 +60,14 @@ func (srv *server) Start() {
 func (srv *server) newRequest(address, cookies string, metadata map[string]string) (*request, error) {
 	parsed, err := url.Parse(address)
 	if err != nil {
-		log.WithField("address", address).WithError(err).
-			Error("Unable to parse address")
-		return nil, err
+		return nil, errors.Wrap(err, "unable to parse address", "address", address)
 	}
 
 	srv.servicesMu.RLock()
 	service, ok := srv.services[metadata["service"]]
 	srv.servicesMu.RUnlock()
 	if !ok {
-		err = errors.New("unknown service")
-		log.WithField("service", metadata["service"]).WithError(err).
-			Error("Unknown service")
-		return nil, err
+		return nil, errors.New("unknown service", "service", metadata["service"])
 	}
 
 	roles := &config.Roles{}
@@ -82,8 +77,7 @@ func (srv *server) newRequest(address, cookies string, metadata map[string]strin
 
 		err = dec.Decode(roles)
 		if err != nil {
-			log.WithError(err).Error("Unable to decode roles")
-			return nil, err
+			return nil, errors.Wrap(err, "unable to decode roles")
 		}
 	}
 

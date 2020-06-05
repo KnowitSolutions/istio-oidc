@@ -47,6 +47,7 @@ func (req *request) bearer() string {
 func (req *request) oauth2() *oauth2.Config {
 	cfg := req.service.oauth2Config
 
+	// TODO: Check for better solutions
 	loc, err := req.url.Parse(req.service.OIDC.CallbackPath)
 	if err != nil {
 		log.WithFields(req).WithField("callback", req.service.OIDC.CallbackPath).

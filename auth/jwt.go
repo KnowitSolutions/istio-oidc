@@ -1,9 +1,9 @@
 package auth
 
 import (
-	"github.com/apex/log"
 	"gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/jwt"
+	"istio-keycloak/logging/errors"
 	"time"
 )
 
@@ -19,13 +19,9 @@ func (e *expirableImpl) expiryChecker(f func() bool) {
 	e.isExpired = f
 }
 
-func makeToken(key []byte, claims interface{}, expiry time.Time) string {
+func makeToken(key []byte, claims interface{}, expiry time.Time) (string, error) {
 	sk := jose.SigningKey{Algorithm: jose.HS512, Key: key}
-	signer, err := jose.NewSigner(sk, nil)
-	if err != nil {
-		log.WithError(err).Fatal("Unable to make JOSE signer")
-	}
-
+	signer, _ := jose.NewSigner(sk, nil)
 	tok := jwt.Signed(signer).Claims(claims)
 
 	if !expiry.IsZero() {
@@ -35,26 +31,22 @@ func makeToken(key []byte, claims interface{}, expiry time.Time) string {
 
 	str, err := tok.CompactSerialize()
 	if err != nil {
-		log.WithError(err).Fatal("Unable to serialize token")
+		return "", errors.Wrap(err, "failed token serialization")
 	}
 
-	return str
+	return str, nil
 }
 
 func parseToken(key []byte, tok string, claims expirable) error {
 	parsed, err := jwt.ParseSigned(tok)
 	if err != nil {
-		log.WithField("token", tok).WithError(err).
-			Error("Unable to parse JWT")
-		return err
+		return errors.Wrap(err, "unable to parse JWT", "token", tok)
 	}
 
 	def := &jwt.Claims{}
 	err = parsed.Claims(key, def)
 	if err != nil {
-		log.WithField("token", tok).WithError(err).
-			Error("Unable to deserialize default claims")
-		return err
+		return errors.Wrap(err, "unable to deserialize default claims", "token", tok)
 	}
 
 	claims.expiryChecker(func() bool {
@@ -65,9 +57,7 @@ func parseToken(key []byte, tok string, claims expirable) error {
 
 	err = parsed.Claims(key, claims)
 	if err != nil {
-		log.WithField("token", tok).WithError(err).
-			Error("Unable to deserialize custom claims")
-		return err
+		return errors.Wrap(err, "unable to deserialize custom claims", "token", tok)
 	}
 
 	return nil

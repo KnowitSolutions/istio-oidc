@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/gob"
-	"github.com/apex/log"
+	"istio-keycloak/logging/errors"
 	"strings"
 )
 
@@ -45,32 +45,18 @@ func (cfg *Service) Validate() error {
 }
 
 // TODO: Replace other encode/decode with these methods
-func (r *Roles) Encode() string {
+func (r *Roles) Encode() (string, error) {
 	buf := bytes.NewBuffer(nil)
 	b64 := base64.NewEncoder(base64.StdEncoding, buf)
 	enc := gob.NewEncoder(b64)
 	err := enc.Encode(r)
-	if err != nil {
-		panic(err)
-	}
-
-	err = b64.Close()
-	if err != nil {
-		panic(err)
-	}
-
-	return buf.String()
+	_ = b64.Close()
+	return buf.String(), err
 }
 
 func (r *Roles) Decode(str string) error {
 	buf := strings.NewReader(str)
-	dec := gob.NewDecoder(base64.NewDecoder(base64.StdEncoding, buf))
-
-	err := dec.Decode(r)
-	if err != nil {
-		log.WithError(err).Error("Unable to decode roles")
-		return err
-	} else {
-		return nil
-	}
+	b64 := base64.NewDecoder(base64.StdEncoding, buf)
+	dec := gob.NewDecoder(b64)
+	return errors.Wrap(dec.Decode(r), "unable to decode roles")
 }
