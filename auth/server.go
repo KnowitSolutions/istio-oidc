@@ -36,11 +36,6 @@ func (srv *server) V2() *ServerV2 {
 }
 
 func (srv *server) AddAccessPolicy(ctx context.Context, cfg *config.AccessPolicy) error {
-	err := cfg.Validate()
-	if err != nil {
-		return errors.Wrap(err, "unable to add accessPolicy")
-	}
-
 	pol, err := newAccessPolicy(ctx, srv.KeycloakURL, cfg)
 	if err != nil {
 		return errors.Wrap(err, "unable to add accessPolicy")

@@ -112,23 +112,19 @@ func (c *Controller) getAccessPolicies(ctx context.Context) ([]api.AccessPolicy,
 
 func (c *Controller) collectDependencies(ctx context.Context, ap *api.AccessPolicy) (accessPolicy, error) {
 	cred := core.Secret{}
-	err := c.Get(ctx, ap.CredentialsKey(), &cred)
+	err := c.Get(ctx, credentialsKey(ap), &cred)
 	if err != nil {
 		return accessPolicy{}, errors.Wrap(err, "unable to fetch credentials")
 	}
 
 	gw := istionetworking.Gateway{}
-	err = c.Get(ctx, ap.GatewayKey(), &gw)
+	err = c.Get(ctx, gatewayKey(ap), &gw)
 	if err != nil {
 		return accessPolicy{}, errors.Wrap(err, "unable to fetch gateway")
 	}
 	c.gwfilt.track(&gw)
 
-	return accessPolicy{
-		AccessPolicy: ap.ToConfig(&cred),
-		ingress:      *newIngress(&gw),
-		vhosts:       virtualHosts(&gw),
-	}, nil
+	return newAccesPolicy(ap, &cred, &gw), nil
 }
 
 func ingresses(pols []accessPolicy) []*ingress {

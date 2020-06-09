@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/gob"
+	"istio-keycloak/api/v1"
 	"istio-keycloak/logging/errors"
+	core "k8s.io/api/core/v1"
 	"strings"
 )
 
@@ -39,9 +41,85 @@ type Route struct {
 
 type Roles map[string][]string
 
-// TODO: Remember to log all errors here
-func (cfg *AccessPolicy) Validate() error {
-	return nil
+type accessPolicySpec api.AccessPolicySpec
+type accessPolicyOIDC api.AccessPolicyOIDC
+type accessPolicyRoute api.AccessPolicyRoute
+
+func NewAccessPolicy(ap *api.AccessPolicy, secret *core.Secret) *AccessPolicy {
+	spec := accessPolicySpec(ap.Spec)
+	return spec.convert(ap.Name, secret)
+}
+
+func (ap *accessPolicySpec) normalize() {
+	if ap.GlobalRolesKey == "" {
+		ap.GlobalRolesKey = "*"
+	}
+}
+
+func (ap *accessPolicySpec) convert(name string, secret *core.Secret) *AccessPolicy {
+	ap.normalize()
+
+	oidc := accessPolicyOIDC(ap.OIDC)
+	global := accessPolicyRoute(ap.Routes[GlobalRouteKey])
+
+	routes := make(Routes, len(ap.Routes)-1)
+	for k, route := range ap.Routes {
+		if k != GlobalRouteKey {
+			route := accessPolicyRoute(route)
+			routes[k] = route.convert(ap.GlobalRolesKey)
+		}
+	}
+
+	return &AccessPolicy{
+		Name:   name,
+		Realm:  ap.Realm,
+		OIDC:   oidc.convert(secret),
+		Global: global.convert(ap.GlobalRolesKey),
+		Routes: routes,
+	}
+}
+
+func (apo *accessPolicyOIDC) normalize() {
+	if apo.CredentialsSecret.ClientIDKey == "" {
+		apo.CredentialsSecret.ClientIDKey = "clientID"
+	}
+	if apo.CredentialsSecret.ClientSecretKey == "" {
+		apo.CredentialsSecret.ClientSecretKey = "clientSecret"
+	}
+	if apo.CallbackPath == "" {
+		apo.CallbackPath = "/odic/callback"
+	}
+}
+
+func (apo *accessPolicyOIDC) convert(secret *core.Secret) OIDC {
+	apo.normalize()
+	return OIDC{
+		ClientID:     string(secret.Data[apo.CredentialsSecret.ClientIDKey]),
+		ClientSecret: string(secret.Data[apo.CredentialsSecret.ClientSecretKey]),
+		CallbackPath: apo.CallbackPath,
+	}
+}
+
+func (apr *accessPolicyRoute) normalize(globalRolesKey string) {
+	if apr.Roles == nil {
+		return
+	}
+
+	global, ok := apr.Roles[globalRolesKey]
+	if !ok {
+		return
+	}
+
+	delete(apr.Roles, globalRolesKey)
+	apr.Roles[GlobalRoleKey] = global
+}
+
+func (apr *accessPolicyRoute) convert(globalRolesKey string) Route {
+	apr.normalize(globalRolesKey)
+	return Route{
+		EnableAuthz: !apr.DisableAccessPolicy,
+		Roles:       apr.Roles,
+	}
 }
 
 // TODO: Replace other encode/decode with these methods
