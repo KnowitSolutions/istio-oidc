@@ -20,7 +20,7 @@ var (
 func mkEnvoyFilter(ingress ingress, svcs []service) (*istionetworking.EnvoyFilter, error) {
 	count := 2
 	for _, svc := range svcs {
-		if svc.ingress.key() == ingress.key() {
+		if svc.ingress.key == ingress.key {
 			count += len(svc.vhosts) * len(svc.Routes)
 		}
 	}
@@ -47,7 +47,7 @@ func mkEnvoyFilter(ingress ingress, svcs []service) (*istionetworking.EnvoyFilte
 	ef.Spec.ConfigPatches = append(ef.Spec.ConfigPatches, extAuthzDisable)
 
 	for _, svc := range svcs {
-		if svc.ingress.key() != ingress.key() {
+		if svc.ingress.key != ingress.key {
 			continue
 		}
 

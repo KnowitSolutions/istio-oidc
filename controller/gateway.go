@@ -3,20 +3,7 @@ package controller
 import (
 	"fmt"
 	istionetworking "istio.io/client-go/pkg/apis/networking/v1alpha3"
-	"reflect"
 )
-
-var defaultIngressSelector = map[string]string{"istio": "ingressgateway"}
-
-func mkIngress(gateway *istionetworking.Gateway) ingress {
-	i := ingress{selector: gateway.Spec.Selector}
-	if reflect.DeepEqual(i.selector, defaultIngressSelector) {
-		i.namespace = IstioRootNamespace
-	} else {
-		i.namespace = gateway.Namespace
-	}
-	return i
-}
 
 func virtualHosts(gateway *istionetworking.Gateway) []string {
 	count := 0

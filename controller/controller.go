@@ -126,7 +126,7 @@ func (c *Controller) collectService(ctx context.Context, ap *api.AccessPolicy) (
 
 	return service{
 		Service: ap.ToConfig(&cred),
-		ingress: mkIngress(&gw),
+		ingress: *newIngress(&gw),
 		vhosts:  virtualHosts(&gw),
 	}, nil
 }
@@ -134,7 +134,7 @@ func (c *Controller) collectService(ctx context.Context, ap *api.AccessPolicy) (
 func ingresses(svcs []service) []*ingress {
 	hash := make(map[string]*ingress, len(svcs))
 	for _, svc := range svcs {
-		hash[svc.ingress.key()] = &svc.ingress
+		hash[svc.ingress.key] = &svc.ingress
 	}
 
 	i := 0
