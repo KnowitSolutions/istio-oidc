@@ -9,14 +9,14 @@ import (
 	"istio-keycloak/logging/errors"
 )
 
-type service struct {
-	*config.Service
+type accessPolicy struct {
+	*config.AccessPolicy
 	oauth2Config oauth2.Config
 	oidcProvider *oidc.Provider
 	oidcVerifier *oidc.IDTokenVerifier
 }
 
-func newService(ctx context.Context, keycloak string, cfg *config.Service) (*service, error) {
+func newAccessPolicy(ctx context.Context, keycloak string, cfg *config.AccessPolicy) (*accessPolicy, error) {
 	iss := fmt.Sprintf("%s/auth/realms/%s", keycloak, cfg.Realm)
 	prov, err := oidc.NewProvider(ctx, iss)
 	if err != nil {
@@ -30,8 +30,8 @@ func newService(ctx context.Context, keycloak string, cfg *config.Service) (*ser
 	}
 	verifier := prov.Verifier(&oidc.Config{ClientID: cfg.OIDC.ClientID})
 
-	return &service{
-		Service:      cfg,
+	return &accessPolicy{
+		AccessPolicy: cfg,
 		oauth2Config: oauth2cfg,
 		oidcProvider: prov,
 		oidcVerifier: verifier,

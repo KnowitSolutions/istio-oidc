@@ -9,14 +9,14 @@ import (
 )
 
 const (
-	ServiceKey     = "service"
-	RolesKey       = "roles"
-	GlobalRouteKey = "*"
-	GlobalRoleKey  = ""
+	AccessPolicyKey = "policy"
+	RolesKey        = "roles"
+	GlobalRouteKey  = "*"
+	GlobalRoleKey   = ""
 )
 
 // TODO: Rename to AccessPolicy
-type Service struct {
+type AccessPolicy struct {
 	Name   string
 	Realm  string
 	OIDC   OIDC
@@ -40,7 +40,7 @@ type Route struct {
 type Roles map[string][]string
 
 // TODO: Remember to log all errors here
-func (cfg *Service) Validate() error {
+func (cfg *AccessPolicy) Validate() error {
 	return nil
 }
 

@@ -18,15 +18,15 @@ import (
 type server struct {
 	config.Server
 	Key        []byte
-	services   map[string]*service
-	servicesMu sync.RWMutex
+	policies   map[string]*accessPolicy
+	policiesMu sync.RWMutex
 	sessions   map[[sha512.Size]byte]*session
 	sessionsMu sync.RWMutex
 }
 
 func NewServer() *server {
 	return &server{
-		services: map[string]*service{},
+		policies: map[string]*accessPolicy{},
 		sessions: map[[sha512.Size]byte]*session{},
 	}
 }
@@ -35,20 +35,20 @@ func (srv *server) V2() *ServerV2 {
 	return &ServerV2{server: srv}
 }
 
-func (srv *server) AddService(ctx context.Context, cfg *config.Service) error {
+func (srv *server) AddAccessPolicy(ctx context.Context, cfg *config.AccessPolicy) error {
 	err := cfg.Validate()
 	if err != nil {
-		return errors.Wrap(err, "unable to add service")
+		return errors.Wrap(err, "unable to add accessPolicy")
 	}
 
-	svc, err := newService(ctx, srv.KeycloakURL, cfg)
+	pol, err := newAccessPolicy(ctx, srv.KeycloakURL, cfg)
 	if err != nil {
-		return errors.Wrap(err, "unable to add service")
+		return errors.Wrap(err, "unable to add accessPolicy")
 	}
 
-	srv.servicesMu.Lock()
-	srv.services[cfg.Name] = svc
-	srv.servicesMu.Unlock()
+	srv.policiesMu.Lock()
+	srv.policies[cfg.Name] = pol
+	srv.policiesMu.Unlock()
 	return nil
 }
 
@@ -63,11 +63,11 @@ func (srv *server) newRequest(address, cookies string, metadata map[string]strin
 		return nil, errors.Wrap(err, "unable to parse address", "address", address)
 	}
 
-	srv.servicesMu.RLock()
-	service, ok := srv.services[metadata["service"]]
-	srv.servicesMu.RUnlock()
+	srv.policiesMu.RLock()
+	policy, ok := srv.policies[metadata["accessPolicy"]]
+	srv.policiesMu.RUnlock()
 	if !ok {
-		return nil, errors.New("unknown service", "service", metadata["service"])
+		return nil, errors.New("unknown accessPolicy", "accessPolicy", metadata["accessPolicy"])
 	}
 
 	roles := &config.Roles{}
@@ -87,7 +87,7 @@ func (srv *server) newRequest(address, cookies string, metadata map[string]strin
 	return &request{
 		url:     *parsed,
 		cookies: req.Cookies(),
-		service: service,
+		policy:  policy,
 		roles:   *roles,
 	}, nil
 }

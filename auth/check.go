@@ -20,10 +20,10 @@ type stateClaims struct {
 }
 
 func (srv *server) check(ctx context.Context, req *request) *response {
-	if req.service == nil {
-		log.WithFields(req).Error("Invalid service")
+	if req.policy == nil {
+		log.WithFields(req).Error("Invalid accessPolicy")
 		return &response{status: http.StatusInternalServerError}
-	} else if req.url.Path == req.service.OIDC.CallbackPath {
+	} else if req.url.Path == req.policy.OIDC.CallbackPath {
 		return srv.finishOIDC(ctx, req)
 	} else if !srv.isAuthenticated(req) {
 		return srv.startOIDC(req)

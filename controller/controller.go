@@ -68,23 +68,23 @@ func (c *Controller) Reconcile(_ reconcile.Request) (reconcile.Result, error) {
 		return reconcile.Result{}, err
 	}
 
-	svcs := make([]service, 0, len(aps))
+	pols := make([]accessPolicy, 0, len(aps))
 	for _, ap := range aps {
 		scope := log.WithField("AccessPolicy", fmt.Sprintf("%s/%s", ap.Namespace, ap.Name))
 		scope.Info("Collecting dependencies")
-		svc, err := c.collectService(ctx, &ap)
+		pol, err := c.collectDependencies(ctx, &ap)
 		if err != nil {
 			scope.WithError(err).Error("Skipping reconciliation")
 			partial = true
 		} else {
-			svcs = append(svcs, svc)
+			pols = append(pols, pol)
 		}
 	}
 
-	for _, ingress := range ingresses(svcs) {
+	for _, ingress := range ingresses(pols) {
 		scope := log.WithField("EnvoyFilter", ingress.String())
 		scope.Info("Reconciling")
-		updated, err := c.reconcileEnvoyFilter(ctx, *ingress, svcs)
+		updated, err := c.reconcileEnvoyFilter(ctx, *ingress, pols)
 		if err != nil {
 			scope.WithError(err).Error("Unable to reconcile")
 			partial = true
@@ -110,31 +110,31 @@ func (c *Controller) getAccessPolicies(ctx context.Context) ([]api.AccessPolicy,
 	return aps.Items, errors.Wrap(err, "unable to fetch AccessPolicies")
 }
 
-func (c *Controller) collectService(ctx context.Context, ap *api.AccessPolicy) (service, error) {
+func (c *Controller) collectDependencies(ctx context.Context, ap *api.AccessPolicy) (accessPolicy, error) {
 	cred := core.Secret{}
 	err := c.Get(ctx, ap.CredentialsKey(), &cred)
 	if err != nil {
-		return service{}, errors.Wrap(err, "unable to fetch credentials")
+		return accessPolicy{}, errors.Wrap(err, "unable to fetch credentials")
 	}
 
 	gw := istionetworking.Gateway{}
 	err = c.Get(ctx, ap.GatewayKey(), &gw)
 	if err != nil {
-		return service{}, errors.Wrap(err, "unable to fetch gateway")
+		return accessPolicy{}, errors.Wrap(err, "unable to fetch gateway")
 	}
 	c.gwfilt.track(&gw)
 
-	return service{
-		Service: ap.ToConfig(&cred),
-		ingress: *newIngress(&gw),
-		vhosts:  virtualHosts(&gw),
+	return accessPolicy{
+		AccessPolicy: ap.ToConfig(&cred),
+		ingress:      *newIngress(&gw),
+		vhosts:       virtualHosts(&gw),
 	}, nil
 }
 
-func ingresses(svcs []service) []*ingress {
-	hash := make(map[string]*ingress, len(svcs))
-	for _, svc := range svcs {
-		hash[svc.ingress.key] = &svc.ingress
+func ingresses(pols []accessPolicy) []*ingress {
+	hash := make(map[string]*ingress, len(pols))
+	for _, pol := range pols {
+		hash[pol.ingress.key] = &pol.ingress
 	}
 
 	i := 0
@@ -147,8 +147,8 @@ func ingresses(svcs []service) []*ingress {
 	return list
 }
 
-func (c *Controller) reconcileEnvoyFilter(ctx context.Context, ingress ingress, svcs []service) (bool, error) {
-	next, err := mkEnvoyFilter(ingress, svcs)
+func (c *Controller) reconcileEnvoyFilter(ctx context.Context, ingress ingress, pols []accessPolicy) (bool, error) {
+	next, err := mkEnvoyFilter(ingress, pols)
 	if err != nil {
 		return true, errors.Wrap(err, "unable to construct next EnvoyFilter")
 	}

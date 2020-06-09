@@ -4,8 +4,8 @@ import (
 	"istio-keycloak/config"
 )
 
-type service struct {
-	*config.Service
+type accessPolicy struct {
+	*config.AccessPolicy
 	ingress ingress
 	vhosts  []string
 }

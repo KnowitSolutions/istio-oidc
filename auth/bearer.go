@@ -37,7 +37,7 @@ func makeBearerClaims(ctx context.Context, req *request, tok *oauth2.Token) (*be
 	}
 
 	provClaims := &providerClaims{}
-	err = req.service.oidcProvider.Claims(provClaims)
+	err = req.policy.oidcProvider.Claims(provClaims)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to retrieve provider claims")
 	}
@@ -70,7 +70,7 @@ func makeBearerClaims(ctx context.Context, req *request, tok *oauth2.Token) (*be
 		return nil, errors.New("unable to extract ID token")
 	}
 
-	idToken, err := req.service.oidcVerifier.Verify(ctx, rawIDToken)
+	idToken, err := req.policy.oidcVerifier.Verify(ctx, rawIDToken)
 	if err != nil {
 		return nil, errors.Wrap(err, "got invalid ID token", "token", rawIDToken)
 	}

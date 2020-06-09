@@ -77,7 +77,7 @@ func (ap *AccessPolicy) GatewayKey() types.NamespacedName {
 	}
 }
 
-func (ap *AccessPolicy) ToConfig(secret *core.Secret) *config.Service {
+func (ap *AccessPolicy) ToConfig(secret *core.Secret) *config.AccessPolicy {
 	return ap.Spec.ToConfig(ap.Name, secret)
 }
 
@@ -87,7 +87,7 @@ func (ap *AccessPolicySpec) normalize() {
 	}
 }
 
-func (ap *AccessPolicySpec) ToConfig(name string, secret *core.Secret) *config.Service {
+func (ap *AccessPolicySpec) ToConfig(name string, secret *core.Secret) *config.AccessPolicy {
 	ap.normalize()
 	global := ap.Routes[config.GlobalRouteKey]
 
@@ -98,7 +98,7 @@ func (ap *AccessPolicySpec) ToConfig(name string, secret *core.Secret) *config.S
 		}
 	}
 
-	return &config.Service{
+	return &config.AccessPolicy{
 		Name:   name,
 		Realm:  ap.Realm,
 		OIDC:   ap.OIDC.ToConfig(secret),

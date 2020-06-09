@@ -17,7 +17,7 @@ type request struct {
 	url     url.URL
 	cookies []*http.Cookie
 
-	service *service
+	policy  *accessPolicy
 	session *session
 
 	roles  config.Roles
@@ -45,12 +45,12 @@ func (req *request) bearer() string {
 }
 
 func (req *request) oauth2() *oauth2.Config {
-	cfg := req.service.oauth2Config
+	cfg := req.policy.oauth2Config
 
 	// TODO: Check for better solutions
-	loc, err := req.url.Parse(req.service.OIDC.CallbackPath)
+	loc, err := req.url.Parse(req.policy.OIDC.CallbackPath)
 	if err != nil {
-		log.WithFields(req).WithField("callback", req.service.OIDC.CallbackPath).
+		log.WithFields(req).WithField("callback", req.policy.OIDC.CallbackPath).
 			WithError(err).Fatal("Unable to construct OIDC callback URL")
 	}
 
@@ -76,9 +76,9 @@ func (req *request) Fields() log.Fields {
 	maskQuery(query, "code")
 	loc.RawQuery = query.Encode()
 
-	service := ""
-	if req.service != nil {
-		service = req.service.Name
+	policy := ""
+	if req.policy != nil {
+		policy = req.policy.Name
 	}
 
 	var bearer string
@@ -90,9 +90,9 @@ func (req *request) Fields() log.Fields {
 	}
 
 	return log.Fields{
-		"service": service,
-		"url":     loc.String(),
-		"bearer":  bearer,
-		"session": req.session != nil,
+		"accessPolicy": policy,
+		"url":          loc.String(),
+		"bearer":       bearer,
+		"session":      req.session != nil,
 	}
 }

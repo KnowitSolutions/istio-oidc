@@ -65,7 +65,7 @@ func startExtAuthz() {
 		log.WithError(err).Fatal("Unable to generate cryptographic key")
 	}
 
-	err = srv.AddService(context.Background(), &config.Service{
+	err = srv.AddAccessPolicy(context.Background(), &config.AccessPolicy{
 		Name:  "jaeger",
 		Realm: "master",
 		OIDC: config.OIDC{
@@ -77,7 +77,7 @@ func startExtAuthz() {
 	if err != nil {
 		// TODO: Log more info about service
 		// TODO: Not fatal when dynamic load from K8s
-		log.WithError(err).Fatal("Unable to add service to server")
+		log.WithError(err).Fatal("Unable to add access policy to server")
 	}
 
 	lis, err := net.Listen("tcp", ":8082")

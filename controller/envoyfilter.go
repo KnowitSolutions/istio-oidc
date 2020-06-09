@@ -17,11 +17,11 @@ var (
 	ExtAuthzTimeout     time.Duration
 )
 
-func mkEnvoyFilter(ingress ingress, svcs []service) (*istionetworking.EnvoyFilter, error) {
+func mkEnvoyFilter(ingress ingress, pols []accessPolicy) (*istionetworking.EnvoyFilter, error) {
 	count := 2
-	for _, svc := range svcs {
-		if svc.ingress.key == ingress.key {
-			count += len(svc.vhosts) * len(svc.Routes)
+	for _, pol := range pols {
+		if pol.ingress.key == ingress.key {
+			count += len(pol.vhosts) * len(pol.Routes)
 		}
 	}
 
@@ -46,23 +46,23 @@ func mkEnvoyFilter(ingress ingress, svcs []service) (*istionetworking.EnvoyFilte
 	extAuthzPerRoute(extAuthzDisable, nil)
 	ef.Spec.ConfigPatches = append(ef.Spec.ConfigPatches, extAuthzDisable)
 
-	for _, svc := range svcs {
-		if svc.ingress.key != ingress.key {
+	for _, pol := range pols {
+		if pol.ingress.key != ingress.key {
 			continue
 		}
 
 		cfg := make(map[string]interface{}, 2)
-		if svc.Global.EnableAuthz {
-			cfg[config.ServiceKey] = svc.Name
-			roles, err := svc.Global.Roles.Encode()
+		if pol.Global.EnableAuthz {
+			cfg[config.AccessPolicyKey] = pol.Name
+			roles, err := pol.Global.Roles.Encode()
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to construct EnvoyFilter")
-			} else if len(svc.Global.Roles) > 0 {
+			} else if len(pol.Global.Roles) > 0 {
 				cfg[config.RolesKey] = roles
 			}
 		}
 
-		for _, vhost := range svc.vhosts {
+		for _, vhost := range pol.vhosts {
 			patch := &istionetworkingapi.EnvoyFilter_EnvoyConfigObjectPatch{}
 			applyToVirtualHost(patch)
 			matchVirtualHost(patch, vhost)
@@ -70,10 +70,10 @@ func mkEnvoyFilter(ingress ingress, svcs []service) (*istionetworking.EnvoyFilte
 			extAuthzPerRoute(patch, cfg)
 			ef.Spec.ConfigPatches = append(ef.Spec.ConfigPatches, patch)
 
-			for route, routeData := range svc.Routes {
+			for route, routeData := range pol.Routes {
 				cfg := make(map[string]interface{}, 2)
 				if routeData.EnableAuthz {
-					cfg[config.ServiceKey] = svc.Name
+					cfg[config.AccessPolicyKey] = pol.Name
 					roles, err := routeData.Roles.Encode()
 					if err != nil {
 						return nil, errors.Wrap(err, "failed to construct EnvoyFilter")
