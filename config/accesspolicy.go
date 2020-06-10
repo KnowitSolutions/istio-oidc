@@ -17,7 +17,6 @@ const (
 	GlobalRoleKey   = ""
 )
 
-// TODO: Rename to AccessPolicy
 type AccessPolicy struct {
 	Name   string
 	Realm  string
@@ -122,7 +121,6 @@ func (apr *accessPolicyRoute) convert(globalRolesKey string) Route {
 	}
 }
 
-// TODO: Replace other encode/decode with these methods
 func (r *Roles) Encode() (string, error) {
 	buf := bytes.NewBuffer(nil)
 	b64 := base64.NewEncoder(base64.StdEncoding, buf)

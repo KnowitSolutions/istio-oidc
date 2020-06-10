@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"fmt"
 	"istio-keycloak/api/v1"
 	"istio-keycloak/config"
 	istionetworking "istio.io/client-go/pkg/apis/networking/v1alpha3"
@@ -11,13 +12,19 @@ import (
 
 type accessPolicy struct {
 	*config.AccessPolicy
-	ingress ingress
-	vhosts  []string
+	key         string
+	credentials types.UID
+	gateway     types.UID
+	ingress     ingress
+	vhosts      []string
 }
 
-func newAccesPolicy(ap *api.AccessPolicy, cred *core.Secret, gw *istionetworking.Gateway) accessPolicy {
-	return accessPolicy{
+func newAccessPolicy(ap *api.AccessPolicy, cred *core.Secret, gw *istionetworking.Gateway) *accessPolicy {
+	return &accessPolicy{
 		AccessPolicy: config.NewAccessPolicy(ap, cred),
+		key:          fmt.Sprintf("%s/%s", ap.Namespace, ap.Name),
+		credentials:  cred.GetUID(),
+		gateway:      gw.GetUID(),
 		ingress:      *newIngress(gw),
 		vhosts:       virtualHosts(gw),
 	}

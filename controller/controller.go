@@ -16,13 +16,22 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-	"strings"
+	"time"
+)
+
+// TODO: Configurable
+var (
+	IstioRootNamespace    = "istio-system"
+	EnvoyFilterNamePrefix = "ext-authz-"
+	ExtAuthzClusterName   string
+	ExtAuthzTimeout       time.Duration
 )
 
 type Controller struct {
 	client.Client
-	gwfilt *eventFilter
-	effilt *eventFilter
+	credfilt *eventFilter
+	gwfilt   *eventFilter
+	effilt   *eventFilter
 }
 
 func (c *Controller) SetupWithManager(mgr ctrl.Manager) {
@@ -40,12 +49,14 @@ func (c *Controller) SetupWithManager(mgr ctrl.Manager) {
 		log.WithError(err).Fatal("Unable to add CRD to scheme")
 	}
 
+	c.credfilt = newEventFilter(&core.Secret{})
 	c.gwfilt = newEventFilter(&istionetworking.Gateway{})
 	c.effilt = newEventFilter(&istionetworking.EnvoyFilter{})
 
 	err = builder.
 		ControllerManagedBy(mgr).
 		WithEventFilter(&predicate.ResourceVersionChangedPredicate{}).
+		WithEventFilter(c.credfilt).
 		WithEventFilter(c.gwfilt).
 		WithEventFilter(c.effilt).
 		For(&api.AccessPolicy{}).
@@ -62,36 +73,25 @@ func (c *Controller) Reconcile(_ reconcile.Request) (reconcile.Result, error) {
 	ctx := context.Background()
 	partial := false
 
-	log.Info("Collecting AccessPolicies")
-	aps, err := c.getAccessPolicies(ctx)
+	pols, err := fetchAccessPolicies(ctx, c)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-
-	pols := make([]accessPolicy, 0, len(aps))
-	for _, ap := range aps {
-		scope := log.WithField("AccessPolicy", fmt.Sprintf("%s/%s", ap.Namespace, ap.Name))
-		scope.Info("Collecting dependencies")
-		pol, err := c.collectDependencies(ctx, &ap)
-		if err != nil {
-			scope.WithError(err).Error("Skipping reconciliation")
+	for _, ap := range pols {
+		if ap.AccessPolicy == nil {
+			log.WithField("AccessPolicy", ap.key).Error("Skipping reconciliation")
 			partial = true
 		} else {
-			pols = append(pols, pol)
+			c.credfilt.track(ap.credentials)
+			c.gwfilt.track(ap.gateway)
 		}
 	}
 
 	for _, ingress := range ingresses(pols) {
-		scope := log.WithField("EnvoyFilter", ingress.String())
-		scope.Info("Reconciling")
-		updated, err := c.reconcileEnvoyFilter(ctx, *ingress, pols)
+		err := c.reconcileEnvoyFilter(ctx, *ingress, pols)
 		if err != nil {
-			scope.WithError(err).Error("Unable to reconcile")
+			log.WithError(err).Error("Unable to reconcile")
 			partial = true
-		} else if updated {
-			scope.Info("Reconciled")
-		} else {
-			scope.Info("Already in desired state")
 		}
 	}
 
@@ -104,89 +104,40 @@ func (c *Controller) Reconcile(_ reconcile.Request) (reconcile.Result, error) {
 	}
 }
 
-func (c *Controller) getAccessPolicies(ctx context.Context) ([]api.AccessPolicy, error) {
-	aps := api.AccessPolicyList{}
-	err := c.List(ctx, &aps)
-	return aps.Items, errors.Wrap(err, "unable to fetch AccessPolicies")
-}
+func (c *Controller) reconcileEnvoyFilter(ctx context.Context, i ingress, pols []accessPolicy) error {
+	scope := log.WithField("EnvoyFilter", i.String())
+	scope.Info("Reconciling")
 
-func (c *Controller) collectDependencies(ctx context.Context, ap *api.AccessPolicy) (accessPolicy, error) {
-	cred := core.Secret{}
-	err := c.Get(ctx, credentialsKey(ap), &cred)
+	next, err := newEnvoyFilter(i, pols)
 	if err != nil {
-		return accessPolicy{}, errors.Wrap(err, "unable to fetch credentials")
+		return errors.Wrap(err, "unable to construct next EnvoyFilter")
 	}
 
-	gw := istionetworking.Gateway{}
-	err = c.Get(ctx, gatewayKey(ap), &gw)
+	curr, err := fetchEnvoyFilter(ctx, c, &i)
 	if err != nil {
-		return accessPolicy{}, errors.Wrap(err, "unable to fetch gateway")
-	}
-	c.gwfilt.track(&gw)
-
-	return newAccesPolicy(ap, &cred, &gw), nil
-}
-
-func ingresses(pols []accessPolicy) []*ingress {
-	hash := make(map[string]*ingress, len(pols))
-	for _, pol := range pols {
-		hash[pol.ingress.key] = &pol.ingress
-	}
-
-	i := 0
-	list := make([]*ingress, len(hash))
-	for _, ingress := range hash {
-		list[i] = ingress
-		i++
-	}
-
-	return list
-}
-
-func (c *Controller) reconcileEnvoyFilter(ctx context.Context, ingress ingress, pols []accessPolicy) (bool, error) {
-	next, err := mkEnvoyFilter(ingress, pols)
-	if err != nil {
-		return true, errors.Wrap(err, "unable to construct next EnvoyFilter")
-	}
-
-	list := istionetworking.EnvoyFilterList{}
-	err = c.List(ctx, &list, client.InNamespace(ingress.namespace))
-	if err != nil {
-		return true, errors.Wrap(err, "unable to fetch EnvoyFilters")
-	}
-
-	var curr *istionetworking.EnvoyFilter
-	for _, ef := range list.Items {
-		if !strings.HasPrefix(ef.Name, EnvoyFilterName) {
-			continue
-		} else if !reflect.DeepEqual(ef.Spec.GetWorkloadSelector().GetLabels(), ingress.selector) {
-			continue
-		} else if curr != nil {
-			id := fmt.Sprintf("%s/%s", ef.Namespace, ef.Name)
-			log.WithField("EnvoyFilter", id).Info("Deleting duplicate EnvoyFilter")
-
-			err = c.Delete(ctx, &ef)
-			if err != nil {
-				return true, errors.Wrap(err, "unable to delete duplicate", "EnvoyFilter", id)
-			}
-		} else {
-			curr = &ef
-		}
+		key := i.String()
+		return errors.Wrap(err, "unable to fetch EnvoyFilter", "EnvoyFilter", key)
 	}
 
 	if curr == nil {
-		err = c.Create(ctx, next)
-		c.effilt.track(next)
-		return true, errors.Wrap(err, "unable to create EnvoyFilter")
-	} else if !reflect.DeepEqual(curr.Spec, next.Spec) {
+		curr = next
+		err = c.Create(ctx, curr)
+		if err != nil {
+			key := fmt.Sprintf("%s/%s", curr.Namespace, curr.Name)
+			return errors.Wrap(err, "unable to create EnvoyFilter", "EnvoyFilter", key)
+		}
+	} else if reflect.DeepEqual(curr.Spec, next.Spec) {
+		scope.Info("Already in desired state")
+	} else {
 		curr.Spec = next.Spec
 		err = c.Update(ctx, curr)
-		c.effilt.track(curr)
-
-		id := fmt.Sprintf("%s/%s", curr.Namespace, curr.Name)
-		return true, errors.Wrap(err, "unable to update EnvoyFilter", "EnvoyFilter", id)
-	} else {
-		c.effilt.track(curr)
-		return false, nil
+		if err != nil {
+			key := fmt.Sprintf("%s/%s", curr.Namespace, curr.Name)
+			return errors.Wrap(err, "unable to update EnvoyFilter", "EnvoyFilter", key)
+		}
 	}
+
+	c.effilt.track(curr.GetUID())
+	scope.Info("Finished reconciliation")
+	return nil
 }

@@ -54,9 +54,9 @@ func startCtrl() {
 
 func startExtAuthz() {
 	srv := auth.NewServer()
-	srv.KeycloakURL = "http://keycloak.localhost"
-	srv.SessionCleaning.Interval = 30 * time.Second
-	srv.SessionCleaning.GracePeriod = 30 * time.Second
+	auth.KeycloakURL = "http://keycloak.localhost"
+	auth.SessionCleaningInterval = 30 * time.Second
+	auth.SessionCleaningGracePeriod = 30 * time.Second
 	srv.Start()
 
 	srv.Key = make([]byte, sha512.Size)

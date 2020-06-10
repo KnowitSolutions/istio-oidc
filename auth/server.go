@@ -3,16 +3,19 @@ package auth
 import (
 	"context"
 	"crypto/sha512"
-	"encoding/base64"
-	"encoding/gob"
 	"github.com/apex/log"
 	"istio-keycloak/config"
 	"istio-keycloak/logging/errors"
 	"net/http"
 	"net/url"
-	"strings"
 	"sync"
 	"time"
+)
+
+var (
+	KeycloakURL string
+	SessionCleaningInterval time.Duration
+	SessionCleaningGracePeriod time.Duration
 )
 
 type server struct {
@@ -36,7 +39,7 @@ func (srv *server) V2() *ServerV2 {
 }
 
 func (srv *server) AddAccessPolicy(ctx context.Context, cfg *config.AccessPolicy) error {
-	pol, err := newAccessPolicy(ctx, srv.KeycloakURL, cfg)
+	pol, err := newAccessPolicy(ctx, KeycloakURL, cfg)
 	if err != nil {
 		return errors.Wrap(err, "unable to add accessPolicy")
 	}
@@ -67,10 +70,7 @@ func (srv *server) newRequest(address, cookies string, metadata map[string]strin
 
 	roles := &config.Roles{}
 	if _, ok = metadata["roles"]; ok {
-		buf := strings.NewReader(metadata["roles"])
-		dec := gob.NewDecoder(base64.NewDecoder(base64.StdEncoding, buf))
-
-		err = dec.Decode(roles)
+		err = roles.Decode(metadata["roles"])
 		if err != nil {
 			return nil, errors.Wrap(err, "unable to decode roles")
 		}
@@ -88,13 +88,13 @@ func (srv *server) newRequest(address, cookies string, metadata map[string]strin
 }
 
 func (srv *server) sessionCleaner() {
-	tick := time.NewTicker(srv.SessionCleaning.Interval)
+	tick := time.NewTicker(SessionCleaningInterval)
 
 	for {
 		<-tick.C
 
 		start := time.Now()
-		max := start.Add(-srv.SessionCleaning.GracePeriod)
+		max := start.Add(-SessionCleaningGracePeriod)
 		tot := 0
 
 		log.WithField("max", max.Format(time.RFC3339)).

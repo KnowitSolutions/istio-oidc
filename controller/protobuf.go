@@ -2,11 +2,11 @@ package controller
 
 import ptypes "github.com/gogo/protobuf/types"
 
-func mkStruct(data map[string]interface{}) *ptypes.Struct {
-	return mkValue(data).Kind.(*ptypes.Value_StructValue).StructValue
+func newStruct(data map[string]interface{}) *ptypes.Struct {
+	return newValue(data).Kind.(*ptypes.Value_StructValue).StructValue
 }
 
-func mkValue(data interface{}) *ptypes.Value {
+func newValue(data interface{}) *ptypes.Value {
 	ret := &ptypes.Value{}
 
 	switch val := data.(type) {
@@ -19,7 +19,7 @@ func mkValue(data interface{}) *ptypes.Value {
 	case map[string]interface{}:
 		fields := make(map[string]*ptypes.Value, len(val))
 		for k, v := range val {
-			fields[k] = mkValue(v)
+			fields[k] = newValue(v)
 		}
 		ret.Kind = &ptypes.Value_StructValue{StructValue: &ptypes.Struct{Fields: fields}}
 

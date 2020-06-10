@@ -43,6 +43,8 @@ func (i *ingress) String() string {
 	var b strings.Builder
 	b.WriteString(i.namespace)
 	b.WriteRune('/')
+	b.WriteString(EnvoyFilterNamePrefix)
+	b.WriteString("-*")
 	b.WriteRune('{')
 
 	first := true
@@ -60,4 +62,20 @@ func (i *ingress) String() string {
 
 	b.WriteRune('}')
 	return b.String()
+}
+
+func ingresses(pols []accessPolicy) []*ingress {
+	hash := make(map[string]*ingress, len(pols))
+	for _, pol := range pols {
+		hash[pol.ingress.key] = &pol.ingress
+	}
+
+	i := 0
+	list := make([]*ingress, len(hash))
+	for _, ingress := range hash {
+		list[i] = ingress
+		i++
+	}
+
+	return list
 }

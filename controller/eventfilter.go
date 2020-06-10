@@ -19,7 +19,7 @@ type eventFilter struct {
 func newEventFilter(example runtime.Object) *eventFilter {
 	filt := eventFilter{
 		trackedType: reflect.TypeOf(example),
-		tracked: map[types.UID]bool{},
+		tracked:     map[types.UID]bool{},
 	}
 	filt.CreateFunc = filt.create
 	filt.UpdateFunc = filt.update
@@ -27,8 +27,8 @@ func newEventFilter(example runtime.Object) *eventFilter {
 	return &filt
 }
 
-func (ef *eventFilter) track(meta meta.Object) {
-	ef.tracked[meta.GetUID()] = ef.mark
+func (ef *eventFilter) track(uid types.UID) {
+	ef.tracked[uid] = ef.mark
 }
 
 func (ef *eventFilter) clean() {
