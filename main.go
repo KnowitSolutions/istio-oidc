@@ -1,19 +1,20 @@
 package main
 
 import (
-	"context"
 	"crypto/rand"
 	"crypto/sha512"
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/cli"
+	"github.com/apex/log/handlers/logfmt"
 	authv2 "github.com/envoyproxy/go-control-plane/envoy/service/auth/v2"
+	"golang.org/x/crypto/ssh/terminal"
 	"google.golang.org/grpc"
 	"istio-keycloak/auth"
-	"istio-keycloak/config"
 	"istio-keycloak/controller"
 	"istio-keycloak/logging"
 	"k8s.io/apimachinery/pkg/runtime"
 	"net"
+	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"time"
 )
@@ -21,14 +22,18 @@ import (
 // TODO: Test OIDC with internal .svc k8s address from /etc/hosts
 // TODO: Forward tracing headers from gRPC when calling HTTP services
 func main() {
-	//log.SetHandler(logfmt.Default)
-	log.SetHandler(cli.Default)
+	if terminal.IsTerminal(int(os.Stdout.Fd())) {
+		log.SetHandler(cli.Default)
+	} else {
+		log.SetHandler(logfmt.Default)
+	}
 
-	startCtrl()
-	startExtAuthz()
+	polStore := auth.NewPolicyStore()
+	startCtrl(polStore)
+	startExtAuthz(polStore)
 }
 
-func startCtrl() {
+func startCtrl(polStore auth.PolicyStore) {
 	ctrl.SetLogger(logging.Log)
 
 	cfg, err := ctrl.GetConfig()
@@ -43,7 +48,8 @@ func startCtrl() {
 	}
 
 	(&controller.Controller{
-		Client: mgr.GetClient(),
+		Client:      mgr.GetClient(),
+		PolicyStore: polStore,
 	}).SetupWithManager(mgr)
 
 	err = mgr.Start(ctrl.SetupSignalHandler())
@@ -52,32 +58,18 @@ func startCtrl() {
 	}
 }
 
-func startExtAuthz() {
+func startExtAuthz(polStore auth.PolicyStore) {
 	srv := auth.NewServer()
 	auth.KeycloakURL = "http://keycloak.localhost"
 	auth.SessionCleaningInterval = 30 * time.Second
 	auth.SessionCleaningGracePeriod = 30 * time.Second
+	srv.PolicyStore = polStore
 	srv.Start()
 
 	srv.Key = make([]byte, sha512.Size)
 	_, err := rand.Read(srv.Key)
 	if err != nil {
 		log.WithError(err).Fatal("Unable to generate cryptographic key")
-	}
-
-	err = srv.AddAccessPolicy(context.Background(), &config.AccessPolicy{
-		Name:  "jaeger",
-		Realm: "master",
-		OIDC: config.OIDC{
-			ClientID:     "jaeger",
-			ClientSecret: "742c63fc-1ead-43ea-87c4-ffd4d6a1550c",
-			CallbackPath: "/oidc/callback",
-		},
-	})
-	if err != nil {
-		// TODO: Log more info about service
-		// TODO: Not fatal when dynamic load from K8s
-		log.WithError(err).Fatal("Unable to add access policy to server")
 	}
 
 	lis, err := net.Listen("tcp", ":8082")

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/apex/log"
 	"istio-keycloak/api/v1"
+	"istio-keycloak/auth"
+	"istio-keycloak/config"
 	"istio-keycloak/logging/errors"
 	istionetworking "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	core "k8s.io/api/core/v1"
@@ -29,9 +31,10 @@ var (
 
 type Controller struct {
 	client.Client
-	credfilt *eventFilter
-	gwfilt   *eventFilter
-	effilt   *eventFilter
+	auth.PolicyStore
+	credfilt    *eventFilter
+	gwfilt      *eventFilter
+	effilt      *eventFilter
 }
 
 func (c *Controller) SetupWithManager(mgr ctrl.Manager) {
@@ -94,6 +97,12 @@ func (c *Controller) Reconcile(_ reconcile.Request) (reconcile.Result, error) {
 			partial = true
 		}
 	}
+
+	cfgs := make([]*config.AccessPolicy, len(pols))
+	for i, pol := range pols {
+		cfgs[i] = pol.AccessPolicy
+	}
+	c.UpdateAccessPolicies(ctx, cfgs)
 
 	if partial {
 		return reconcile.Result{}, errors.New("partial reconciliation")
