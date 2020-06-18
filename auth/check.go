@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	"crypto/sha512"
 	"fmt"
 	"github.com/apex/log"
 	"golang.org/x/oauth2"
@@ -40,17 +39,14 @@ func (srv *server) isAuthenticated(req *request) bool {
 		return false
 	}
 
-	err := parseToken(srv.Key, token, &req.claims)
+	err := parseToken(srv.getKey(), token, &req.claims)
 	if err != nil {
 		log.WithError(err).Error("Unable to check authentication")
 		return false
 	}
 
-	hash := sha512.Sum512([]byte(token))
 	var ok bool
-	srv.sessionsMu.RLock()
-	req.session, ok = srv.sessions[hash]
-	srv.sessionsMu.RUnlock()
+	req.session, ok = srv.getSession(token)
 	return ok
 }
 
@@ -58,7 +54,7 @@ func (srv *server) startOIDC(req *request) *response {
 	log.WithFields(req).Info("Starting OIDC")
 
 	claims := &stateClaims{Path: req.url.Path}
-	tok, err := makeToken(srv.Key, claims, time.Time{})
+	tok, err := makeToken(srv.getKey(), claims, time.Time{})
 	if err != nil {
 		log.WithError(err).Error("Unable to start OIDC flow")
 		return &response{status: http.StatusInternalServerError}
@@ -82,7 +78,7 @@ func (srv *server) finishOIDC(ctx context.Context, req *request) *response {
 	}
 
 	claims := &stateClaims{}
-	err := parseToken(srv.Key, query["state"][0], claims)
+	err := parseToken(srv.getKey(), query["state"][0], claims)
 	if err != nil {
 		log.WithError(err).Error("Unable to finnish OIDC flow")
 		return &response{status: http.StatusBadRequest}
@@ -127,19 +123,13 @@ func (srv *server) setToken(ctx context.Context, req *request, token *oauth2.Tok
 		return &response{status: http.StatusInternalServerError}
 	}
 
-	tok, err := makeToken(srv.Key, claims, token.Expiry)
+	tok, err := makeToken(srv.getKey(), claims, token.Expiry)
 	if err != nil {
 		log.WithFields(req).WithError(err).Error("Unable to set access token")
 		return &response{status: http.StatusInternalServerError}
 	}
 
-	hash := sha512.Sum512([]byte(tok))
-	srv.sessionsMu.Lock()
-	srv.sessions[hash] = &session{
-		refreshToken: token.RefreshToken,
-		expiry:       token.Expiry,
-	}
-	srv.sessionsMu.Unlock()
+	srv.setSession(tok, token)
 	// TODO: Gossip
 
 	cookie := http.Cookie{

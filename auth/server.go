@@ -1,35 +1,26 @@
 package auth
 
 import (
-	"crypto/sha512"
-	"github.com/apex/log"
 	"istio-keycloak/config"
 	"istio-keycloak/logging/errors"
 	"net/http"
 	"net/url"
-	"sync"
-	"time"
 )
 
 var (
-	KeycloakURL                string
-	SessionCleaningInterval    time.Duration
-	SessionCleaningGracePeriod time.Duration
+	KeycloakURL string
 )
 
 type server struct {
 	config.Server
+	KeyStore
 	PolicyStore
-	// TODO: Encapsulate in separate interfaces
-	Key        []byte
-	KeyMu      sync.RWMutex // TODO: Mutex on update key
-	sessions   map[[sha512.Size]byte]*session
-	sessionsMu sync.RWMutex
+	sessionStore
 }
 
 func NewServer() *server {
 	return &server{
-		sessions: map[[sha512.Size]byte]*session{},
+		sessionStore: newSessionStore(),
 	}
 }
 
@@ -39,7 +30,7 @@ func (srv *server) V2() *ServerV2 {
 
 func (srv *server) Start() {
 	srv.Validate()
-	go srv.sessionCleaner()
+	srv.sessionStore.start()
 }
 
 func (srv *server) newRequest(address, cookies string, metadata map[string]string) (*request, error) {
@@ -70,39 +61,4 @@ func (srv *server) newRequest(address, cookies string, metadata map[string]strin
 		policy:  policy,
 		roles:   *roles,
 	}, nil
-}
-
-func (srv *server) sessionCleaner() {
-	tick := time.NewTicker(SessionCleaningInterval)
-
-	for {
-		<-tick.C
-
-		start := time.Now()
-		max := start.Add(-SessionCleaningGracePeriod)
-		tot := 0
-
-		log.WithField("max", max.Format(time.RFC3339)).
-			Info("Cleaning sessions")
-
-		srv.sessionsMu.RLock()
-		for k, v := range srv.sessions {
-			if v.expiry.Before(max) {
-				srv.sessionsMu.RUnlock()
-				srv.sessionsMu.Lock()
-
-				delete(srv.sessions, k)
-				tot++
-
-				srv.sessionsMu.Unlock()
-				srv.sessionsMu.RLock()
-			}
-		}
-		srv.sessionsMu.RUnlock()
-
-		stop := time.Now()
-		dur := stop.Sub(start)
-		log.WithFields(log.Fields{"duration": dur, "total": tot}).
-			Info("Done cleaning sessions")
-	}
 }

@@ -1,8 +1,6 @@
 package main
 
 import (
-	"crypto/rand"
-	"crypto/sha512"
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/cli"
 	"github.com/apex/log/handlers/logfmt"
@@ -28,9 +26,16 @@ func main() {
 		log.SetHandler(logfmt.Default)
 	}
 
+	keyStore := auth.NewKeyStore()
+	_, err := keyStore.MakeKey()
+	if err != nil {
+		log.WithError(err).Fatal("Unable to generate cryptographic key")
+	}
+
 	polStore := auth.NewPolicyStore()
+
 	startCtrl(polStore)
-	startExtAuthz(polStore)
+	startExtAuthz(keyStore, polStore)
 }
 
 func startCtrl(polStore auth.PolicyStore) {
@@ -58,19 +63,14 @@ func startCtrl(polStore auth.PolicyStore) {
 	}
 }
 
-func startExtAuthz(polStore auth.PolicyStore) {
+func startExtAuthz(keyStore auth.KeyStore, polStore auth.PolicyStore) {
 	srv := auth.NewServer()
 	auth.KeycloakURL = "http://keycloak.localhost"
 	auth.SessionCleaningInterval = 30 * time.Second
 	auth.SessionCleaningGracePeriod = 30 * time.Second
+	srv.KeyStore = keyStore
 	srv.PolicyStore = polStore
 	srv.Start()
-
-	srv.Key = make([]byte, sha512.Size)
-	_, err := rand.Read(srv.Key)
-	if err != nil {
-		log.WithError(err).Fatal("Unable to generate cryptographic key")
-	}
 
 	lis, err := net.Listen("tcp", ":8082")
 	if err != nil {
