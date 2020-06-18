@@ -1,4 +1,4 @@
-package auth
+package state
 
 import (
 	"crypto/sha512"
@@ -13,28 +13,28 @@ var (
 	SessionCleaningGracePeriod time.Duration
 )
 
-type sessionStore interface {
-	start()
-	getSession(string) (*session, bool)
-	setSession(string, *oauth2.Token)
+type SessionStore interface {
+	Start()
+	GetSession(string) (*Session, bool)
+	SetSession(string, *oauth2.Token)
 }
 
 type sessionStoreImpl struct {
-	store map[[sha512.Size]byte]*session
-	mu       sync.RWMutex
+	store map[[sha512.Size]byte]*Session
+	mu    sync.RWMutex
 }
 
-func newSessionStore() sessionStore {
+func NewSessionStore() SessionStore {
 	return &sessionStoreImpl{
-		store: map[[sha512.Size]byte]*session{},
+		store: map[[sha512.Size]byte]*Session{},
 	}
 }
 
-func (ss *sessionStoreImpl) start()  {
+func (ss *sessionStoreImpl) Start() {
 	go ss.sessionCleaner()
 }
 
-func (ss *sessionStoreImpl) getSession(token string) (*session, bool) {
+func (ss *sessionStoreImpl) GetSession(token string) (*Session, bool) {
 	ss.mu.RLock()
 	defer ss.mu.RUnlock()
 
@@ -43,14 +43,14 @@ func (ss *sessionStoreImpl) getSession(token string) (*session, bool) {
 	return session, ok
 }
 
-func (ss *sessionStoreImpl) setSession(token string, data *oauth2.Token) {
+func (ss *sessionStoreImpl) SetSession(token string, data *oauth2.Token) {
 	ss.mu.Lock()
 	defer ss.mu.Unlock()
 
 	hash := sha512.Sum512([]byte(token))
-	ss.store[hash] = &session{
-		refreshToken: data.RefreshToken,
-		expiry:       data.Expiry,
+	ss.store[hash] = &Session{
+		RefreshToken: data.RefreshToken,
+		Expiry:       data.Expiry,
 	}
 }
 
@@ -69,7 +69,7 @@ func (ss *sessionStoreImpl) sessionCleaner() {
 
 		ss.mu.RLock()
 		for k, v := range ss.store {
-			if v.expiry.Before(max) {
+			if v.Expiry.Before(max) {
 				ss.mu.RUnlock()
 				ss.mu.Lock()
 

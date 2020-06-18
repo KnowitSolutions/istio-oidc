@@ -1,4 +1,4 @@
-package auth
+package state
 
 import (
 	"crypto/rand"
@@ -7,7 +7,7 @@ import (
 )
 
 type KeyStore interface {
-	getKey() []byte
+	GetKey() []byte
 	MakeKey() ([]byte, error)
 }
 
@@ -20,7 +20,7 @@ func NewKeyStore() KeyStore {
 	return &keyStoreImpl{}
 }
 
-func (ks *keyStoreImpl) getKey() []byte {
+func (ks *keyStoreImpl) GetKey() []byte {
 	ks.mu.RLock()
 	defer ks.mu.RUnlock()
 	return ks.key

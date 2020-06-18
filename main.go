@@ -10,6 +10,7 @@ import (
 	"istio-keycloak/auth"
 	"istio-keycloak/controller"
 	"istio-keycloak/logging"
+	"istio-keycloak/state"
 	"k8s.io/apimachinery/pkg/runtime"
 	"net"
 	"os"
@@ -26,19 +27,19 @@ func main() {
 		log.SetHandler(logfmt.Default)
 	}
 
-	keyStore := auth.NewKeyStore()
+	keyStore := state.NewKeyStore()
 	_, err := keyStore.MakeKey()
 	if err != nil {
 		log.WithError(err).Fatal("Unable to generate cryptographic key")
 	}
 
-	polStore := auth.NewPolicyStore()
+	oidcCommStore := state.NewOidcCommunicatorStore()
 
-	startCtrl(polStore)
-	startExtAuthz(keyStore, polStore)
+	startCtrl(oidcCommStore)
+	startExtAuthz(keyStore, oidcCommStore)
 }
 
-func startCtrl(polStore auth.PolicyStore) {
+func startCtrl(oidcCommStore state.OidcCommunicatorStore) {
 	ctrl.SetLogger(logging.Log)
 
 	cfg, err := ctrl.GetConfig()
@@ -53,8 +54,8 @@ func startCtrl(polStore auth.PolicyStore) {
 	}
 
 	(&controller.Controller{
-		Client:      mgr.GetClient(),
-		PolicyStore: polStore,
+		Client:                mgr.GetClient(),
+		OidcCommunicatorStore: oidcCommStore,
 	}).SetupWithManager(mgr)
 
 	err = mgr.Start(ctrl.SetupSignalHandler())
@@ -63,13 +64,15 @@ func startCtrl(polStore auth.PolicyStore) {
 	}
 }
 
-func startExtAuthz(keyStore auth.KeyStore, polStore auth.PolicyStore) {
-	srv := auth.NewServer()
-	auth.KeycloakURL = "http://keycloak.localhost"
-	auth.SessionCleaningInterval = 30 * time.Second
-	auth.SessionCleaningGracePeriod = 30 * time.Second
-	srv.KeyStore = keyStore
-	srv.PolicyStore = polStore
+func startExtAuthz(keyStore state.KeyStore, oidcCommStore state.OidcCommunicatorStore) {
+	srv := auth.Server{
+		KeyStore:              keyStore,
+		OidcCommunicatorStore: oidcCommStore,
+		SessionStore:          state.NewSessionStore(),
+	}
+	state.KeycloakURL = "http://keycloak.localhost"
+	state.SessionCleaningInterval = 30 * time.Second
+	state.SessionCleaningGracePeriod = 30 * time.Second
 	srv.Start()
 
 	lis, err := net.Listen("tcp", ":8082")

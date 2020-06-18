@@ -2,8 +2,8 @@ package controller
 
 import (
 	"fmt"
-	"istio-keycloak/config"
 	"istio-keycloak/logging/errors"
+	"istio-keycloak/state"
 	istionetworkingapi "istio.io/api/networking/v1alpha3"
 	istionetworking "istio.io/client-go/pkg/apis/networking/v1alpha3"
 )
@@ -87,7 +87,7 @@ func extAuthz(patch *istionetworkingapi.EnvoyFilter_EnvoyConfigObjectPatch) {
 	})
 }
 
-func extAuthzPerRoute(patch *istionetworkingapi.EnvoyFilter_EnvoyConfigObjectPatch, policy string, route *config.Route) error {
+func extAuthzPerRoute(patch *istionetworkingapi.EnvoyFilter_EnvoyConfigObjectPatch, policy string, route *state.Route) error {
 	cfg := map[string]interface{}{
 		"@type": "type.googleapis.com/envoy.config.filter.http.ext_authz.v2.ExtAuthzPerRoute",
 	}
@@ -101,8 +101,8 @@ func extAuthzPerRoute(patch *istionetworkingapi.EnvoyFilter_EnvoyConfigObjectPat
 		exts := make(map[string]interface{}, 2)
 		if len(route.Roles) > 0 {
 			exts = map[string]interface{}{
-				config.AccessPolicyKey: policy,
-				config.RolesKey:        roles,
+				state.AccessPolicyKey: policy,
+				state.RolesKey:        roles,
 			}
 		}
 

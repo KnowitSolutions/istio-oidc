@@ -18,14 +18,14 @@ type stateClaims struct {
 	Path string `json:"path"`
 }
 
-func (srv *server) check(ctx context.Context, req *request) *response {
-	if req.policy == nil {
-		log.WithFields(req).Error("Invalid accessPolicy")
+func (srv *Server) check(ctx context.Context, req *request) *response {
+	if req.oidc == nil {
+		log.WithFields(req).Error("Invalid AccessPolicy")
 		return &response{status: http.StatusInternalServerError}
-	} else if req.url.Path == req.policy.OIDC.CallbackPath {
-		return srv.finishOIDC(ctx, req)
+	} else if req.oidc.IsCallback(req.url) {
+		return srv.finishOidc(ctx, req)
 	} else if !srv.isAuthenticated(req) {
-		return srv.startOIDC(req)
+		return srv.startOidc(req)
 	} else if req.claims.isExpired() {
 		return srv.updateToken(ctx, req)
 	} else {
@@ -33,41 +33,41 @@ func (srv *server) check(ctx context.Context, req *request) *response {
 	}
 }
 
-func (srv *server) isAuthenticated(req *request) bool {
+func (srv *Server) isAuthenticated(req *request) bool {
 	token := req.bearer()
 	if token == "" {
 		return false
 	}
 
-	err := parseToken(srv.getKey(), token, &req.claims)
+	err := parseToken(srv.GetKey(), token, &req.claims)
 	if err != nil {
 		log.WithError(err).Error("Unable to check authentication")
 		return false
 	}
 
 	var ok bool
-	req.session, ok = srv.getSession(token)
+	req.session, ok = srv.GetSession(token)
 	return ok
 }
 
-func (srv *server) startOIDC(req *request) *response {
+func (srv *Server) startOidc(req *request) *response {
 	log.WithFields(req).Info("Starting OIDC")
 
 	claims := &stateClaims{Path: req.url.Path}
-	tok, err := makeToken(srv.getKey(), claims, time.Time{})
+	tok, err := makeToken(srv.GetKey(), claims, time.Time{})
 	if err != nil {
 		log.WithError(err).Error("Unable to start OIDC flow")
 		return &response{status: http.StatusInternalServerError}
 	}
 
-	cfg := req.oauth2()
+	cfg := req.oidc.OAuth2(req.url)
 	loc := cfg.AuthCodeURL(tok)
 
 	headers := map[string]string{"location": loc}
 	return &response{status: http.StatusSeeOther, headers: headers}
 }
 
-func (srv *server) finishOIDC(ctx context.Context, req *request) *response {
+func (srv *Server) finishOidc(ctx context.Context, req *request) *response {
 	log.WithFields(req).Info("Finishing OIDC")
 
 	query := req.url.Query()
@@ -78,13 +78,13 @@ func (srv *server) finishOIDC(ctx context.Context, req *request) *response {
 	}
 
 	claims := &stateClaims{}
-	err := parseToken(srv.getKey(), query["state"][0], claims)
+	err := parseToken(srv.GetKey(), query["state"][0], claims)
 	if err != nil {
 		log.WithError(err).Error("Unable to finnish OIDC flow")
 		return &response{status: http.StatusBadRequest}
 	}
 
-	cfg := req.oauth2()
+	cfg := req.oidc.OAuth2(req.url)
 	tok, err := cfg.Exchange(ctx, query["code"][0])
 	if err != nil {
 		err = errors.Wrap(err,"failed authorization code exchange")
@@ -99,11 +99,11 @@ func (srv *server) finishOIDC(ctx context.Context, req *request) *response {
 	return srv.setToken(ctx, req, tok, claims.Path)
 }
 
-func (srv *server) updateToken(ctx context.Context, req *request) *response {
+func (srv *Server) updateToken(ctx context.Context, req *request) *response {
 	log.WithFields(req).Info("Updating JWT")
 
-	cfg := req.oauth2()
-	src := cfg.TokenSource(ctx, &oauth2.Token{RefreshToken: req.session.refreshToken})
+	cfg := req.oidc.OAuth2(req.url)
+	src := cfg.TokenSource(ctx, &oauth2.Token{RefreshToken: req.session.RefreshToken})
 
 	tok, err := src.Token()
 	if err != nil {
@@ -115,21 +115,20 @@ func (srv *server) updateToken(ctx context.Context, req *request) *response {
 	return srv.setToken(ctx, req, tok, "")
 }
 
-// TODO: This calls JWKs endpoint twice. That is unnecessary. See if it is possible to merge.
-func (srv *server) setToken(ctx context.Context, req *request, token *oauth2.Token, uri string) *response {
+func (srv *Server) setToken(ctx context.Context, req *request, token *oauth2.Token, uri string) *response {
 	claims, err := makeBearerClaims(ctx, req, token)
 	if err != nil {
 		log.WithFields(req).WithError(err).Error("Unable to set access token")
 		return &response{status: http.StatusInternalServerError}
 	}
 
-	tok, err := makeToken(srv.getKey(), claims, token.Expiry)
+	tok, err := makeToken(srv.GetKey(), claims, token.Expiry)
 	if err != nil {
 		log.WithFields(req).WithError(err).Error("Unable to set access token")
 		return &response{status: http.StatusInternalServerError}
 	}
 
-	srv.setSession(tok, token)
+	srv.SetSession(tok, token)
 	// TODO: Gossip
 
 	cookie := http.Cookie{
@@ -151,7 +150,7 @@ func (srv *server) setToken(ctx context.Context, req *request, token *oauth2.Tok
 	return res
 }
 
-func (srv *server) authorize(req *request) *response {
+func (srv *Server) authorize(req *request) *response {
 	log.WithFields(req).Info("Authorizing")
 
 	found := make(map[string]map[string]bool, len(req.roles))

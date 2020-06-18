@@ -14,7 +14,7 @@ import (
 )
 
 type ServerV2 struct {
-	*server
+	*Server
 }
 
 func (srv *ServerV2) Check(ctx context.Context, req *auth.CheckRequest) (*auth.CheckResponse, error) {
