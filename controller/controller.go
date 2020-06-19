@@ -100,7 +100,7 @@ func (c *Controller) Reconcile(_ reconcile.Request) (reconcile.Result, error) {
 	for i, pol := range pols {
 		cfgs[i] = pol.AccessPolicy
 	}
-	c.UpdateOIDCs(ctx, cfgs)
+	c.UpdateOicds(ctx, cfgs)
 
 	if partial {
 		return reconcile.Result{}, errors.New("partial reconciliation")
@@ -133,8 +133,10 @@ func (c *Controller) reconcileEnvoyFilter(ctx context.Context, i ingress, pols [
 			key := fmt.Sprintf("%s/%s", curr.Namespace, curr.Name)
 			return errors.Wrap(err, "unable to create EnvoyFilter", "EnvoyFilter", key)
 		}
+
+		scope.Info("Creating EnvoyFilter")
 	} else if reflect.DeepEqual(curr.Spec, next.Spec) {
-		scope.Info("Already in desired state")
+		scope.Info("EnvoyFilter already up to date")
 	} else {
 		curr.Spec = next.Spec
 		err = c.Update(ctx, curr)
@@ -142,9 +144,10 @@ func (c *Controller) reconcileEnvoyFilter(ctx context.Context, i ingress, pols [
 			key := fmt.Sprintf("%s/%s", curr.Namespace, curr.Name)
 			return errors.Wrap(err, "unable to update EnvoyFilter", "EnvoyFilter", key)
 		}
+
+		scope.Info("Updating EnvoyFilter")
 	}
 
 	c.effilt.track(curr.GetUID())
-	scope.Info("Finished reconciliation")
 	return nil
 }

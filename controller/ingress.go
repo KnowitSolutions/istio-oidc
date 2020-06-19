@@ -44,7 +44,7 @@ func (i *ingress) String() string {
 	b.WriteString(i.namespace)
 	b.WriteRune('/')
 	b.WriteString(EnvoyFilterNamePrefix)
-	b.WriteString("-*")
+	b.WriteRune('*')
 	b.WriteRune('{')
 
 	first := true

@@ -60,7 +60,14 @@ func fetchEnvoyFilter(ctx context.Context, c client.Client, i *ingress) (*istion
 
 	var ef *istionetworking.EnvoyFilter
 	for _, elem := range efs.Items {
-		if ef != nil {
+		if !strings.HasPrefix(elem.Name, EnvoyFilterNamePrefix) ||
+			!reflect.DeepEqual(elem.Spec.GetWorkloadSelector().GetLabels(), i.selector) {
+			continue
+		}
+
+		if ef == nil {
+			ef = &elem
+		} else {
 			id := fmt.Sprintf("%s/%s", elem.Namespace, elem.Name)
 			scope.WithField("EnvoyFilter", id).Info("Deleting duplicate EnvoyFilter")
 
@@ -70,11 +77,6 @@ func fetchEnvoyFilter(ctx context.Context, c client.Client, i *ingress) (*istion
 			}
 
 			continue
-		}
-
-		if strings.HasPrefix(elem.Name, EnvoyFilterNamePrefix) &&
-			reflect.DeepEqual(elem.Spec.GetWorkloadSelector().GetLabels(), i.selector) {
-			ef = &elem
 		}
 	}
 

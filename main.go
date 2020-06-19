@@ -35,7 +35,7 @@ func main() {
 
 	oidcCommStore := state.NewOidcCommunicatorStore()
 
-	startCtrl(oidcCommStore)
+	go startCtrl(oidcCommStore)
 	startExtAuthz(keyStore, oidcCommStore)
 }
 
