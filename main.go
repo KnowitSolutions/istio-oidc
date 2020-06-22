@@ -36,7 +36,7 @@ func main() {
 	oidcCommStore := state.NewOidcCommunicatorStore()
 
 	go startCtrl(oidcCommStore)
-	go startExtAuthz(keyStore, oidcCommStore)
+	go startGrpc(keyStore, oidcCommStore)
 	select {}
 }
 
@@ -65,8 +65,25 @@ func startCtrl(oidcCommStore state.OidcCommunicatorStore) {
 	}
 }
 
-func startExtAuthz(keyStore state.KeyStore, oidcCommStore state.OidcCommunicatorStore) {
-	srv := auth.Server{
+func startGrpc(keyStore state.KeyStore, oidcCommStore state.OidcCommunicatorStore) {
+	addr := ":8082"
+	lis, err := net.Listen("tcp", addr)
+	if err != nil {
+		log.WithError(err).WithField("address", addr).
+			Fatal("Unable to bind TCP socket")
+	}
+
+	srv := grpc.NewServer()
+	startExtAuthz(srv, keyStore, oidcCommStore)
+
+	err = srv.Serve(lis)
+	if err != nil {
+		log.WithError(err).Fatal("Unable to start gRPC server")
+	}
+}
+
+func startExtAuthz(srv *grpc.Server, keyStore state.KeyStore, oidcCommStore state.OidcCommunicatorStore) {
+	extAuth := auth.Server{
 		KeyStore:              keyStore,
 		OidcCommunicatorStore: oidcCommStore,
 		SessionStore:          state.NewSessionStore(),
@@ -74,19 +91,7 @@ func startExtAuthz(keyStore state.KeyStore, oidcCommStore state.OidcCommunicator
 	state.KeycloakURL = "http://keycloak.localhost"
 	state.SessionCleaningInterval = 30 * time.Second
 	state.SessionCleaningGracePeriod = 30 * time.Second
-	srv.Start()
+	extAuth.Start()
 
-	lis, err := net.Listen("tcp", ":8082")
-	if err != nil {
-		// TODO: Log bind parameters
-		log.WithError(err).Fatal("Unable to bind TCP socket")
-	}
-
-	grpcServer := grpc.NewServer()
-	authv2.RegisterAuthorizationServer(grpcServer, srv.V2())
-
-	err = grpcServer.Serve(lis)
-	if err != nil {
-		log.WithError(err).Fatal("Unable to start gRPC server")
-	}
+	authv2.RegisterAuthorizationServer(srv, extAuth.V2())
 }
