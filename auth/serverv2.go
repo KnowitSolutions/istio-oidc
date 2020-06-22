@@ -34,25 +34,24 @@ func (srv *ServerV2) Check(ctx context.Context, req *auth.CheckRequest) (*auth.C
 		r = &response{status: http.StatusInternalServerError}
 	}
 
-	res := &auth.CheckResponse{Status: &status.Status{}}
+	res := &auth.CheckResponse{}
+	hs := make([]*core.HeaderValueOption, len(r.headers))
 
-	// TODO: Clean up which codes are returned
-	switch r.status {
-	case http.StatusOK:
-		res.Status.Code = int32(code.Code_OK)
-	case http.StatusBadRequest:
-		res.Status.Code = int32(code.Code_INVALID_ARGUMENT)
-	case http.StatusUnauthorized:
-		res.Status.Code = int32(code.Code_UNAUTHENTICATED)
-	case http.StatusForbidden:
-		res.Status.Code = int32(code.Code_PERMISSION_DENIED)
-	case http.StatusInternalServerError:
-		res.Status.Code = int32(code.Code_INTERNAL)
-	default:
-		res.Status.Code = int32(code.Code_UNKNOWN)
+	if r.status == http.StatusOK {
+		res.Status = &status.Status{Code: int32(code.Code_OK)}
+		res.HttpResponse = &auth.CheckResponse_OkResponse{
+			OkResponse: &auth.OkHttpResponse{Headers: hs},
+		}
+	} else {
+		res.Status = &status.Status{Code: int32(code.Code_PERMISSION_DENIED)}
+		res.HttpResponse = &auth.CheckResponse_DeniedResponse{
+			DeniedResponse: &auth.DeniedHttpResponse{
+				Status:  &types.HttpStatus{Code: types.StatusCode(r.status)},
+				Headers: hs,
+			},
+		}
 	}
 
-	hs := make([]*core.HeaderValueOption, len(r.headers))
 	i := 0
 	for k, v := range r.headers {
 		hs[i] = &core.HeaderValueOption{
@@ -60,21 +59,6 @@ func (srv *ServerV2) Check(ctx context.Context, req *auth.CheckRequest) (*auth.C
 			Append: &wrappers.BoolValue{Value: false},
 		}
 		i++
-	}
-
-	if r.status == http.StatusOK {
-		res.HttpResponse = &auth.CheckResponse_OkResponse{
-			OkResponse: &auth.OkHttpResponse{
-				Headers: hs,
-			},
-		}
-	} else {
-		res.HttpResponse = &auth.CheckResponse_DeniedResponse{
-			DeniedResponse: &auth.DeniedHttpResponse{
-				Status:  &types.HttpStatus{Code: types.StatusCode(r.status)},
-				Headers: hs,
-			},
-		}
 	}
 
 	return res, nil
