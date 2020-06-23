@@ -8,9 +8,8 @@ import (
 )
 
 func init() {
-	reg := prometheus.NewRegistry()
-	prometheus.DefaultRegisterer = reg
-	prometheus.DefaultGatherer = reg
+	metrics.Registry.Unregister(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
+	metrics.Registry.Unregister(prometheus.NewGoCollector())
 }
 
 func RegisterMetrics(mux *http.ServeMux) {

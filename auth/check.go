@@ -19,18 +19,43 @@ type stateClaims struct {
 }
 
 func (srv *Server) check(ctx context.Context, req *request) *response {
-	if req.oidc == nil {
-		log.WithFields(req).Error("Invalid AccessPolicy")
-		return &response{status: http.StatusInternalServerError}
+	var res *response
+
+	if req == nil {
+		reqBadReqCount.Inc()
+		res = &response{status: http.StatusInternalServerError}
 	} else if req.oidc.IsCallback(req.url) {
-		return srv.finishOidc(ctx, req)
+		reqCallbackCount.Inc()
+		res = srv.finishOidc(ctx, req)
 	} else if !srv.isAuthenticated(req) {
-		return srv.startOidc(req)
+		reqUnauthdCount.Inc()
+		res = srv.startOidc(req)
 	} else if req.claims.isExpired() {
-		return srv.updateToken(ctx, req)
+		reqExpiredCount.Inc()
+		res = srv.updateToken(ctx, req)
 	} else {
-		return srv.authorize(req)
+		reqAuthdCount.Inc()
+		res = srv.authorize(req)
 	}
+
+	switch res.status {
+	case http.StatusOK:
+		resAllowed.Inc()
+	case http.StatusSeeOther:
+		fallthrough
+	case http.StatusTemporaryRedirect:
+		resRedir.Inc()
+	case http.StatusBadRequest:
+		resBadReq.Inc()
+	case http.StatusForbidden:
+		resDenied.Inc()
+	case http.StatusInternalServerError:
+		resError.Inc()
+	default:
+		resOther.Inc()
+	}
+
+	return res
 }
 
 func (srv *Server) isAuthenticated(req *request) bool {
@@ -87,11 +112,11 @@ func (srv *Server) finishOidc(ctx context.Context, req *request) *response {
 	cfg := req.oidc.OAuth2(req.url)
 	tok, err := cfg.Exchange(ctx, query["code"][0])
 	if err != nil {
-		err = errors.Wrap(err,"failed authorization code exchange")
+		err = errors.Wrap(err, "failed authorization code exchange")
 		log.WithFields(req).WithFields(log.Fields{
 			"clientId": cfg.ClientID,
-			"url": cfg.Endpoint.TokenURL,
-			"roles": strings.Join(cfg.Scopes, ","),
+			"url":      cfg.Endpoint.TokenURL,
+			"roles":    strings.Join(cfg.Scopes, ","),
 		}).WithError(err).Error("Unable to finnish OIDC flow")
 		return &response{status: http.StatusForbidden}
 	}
