@@ -66,14 +66,14 @@ func fetchEnvoyFilter(ctx context.Context, c client.Client, i *ingress) (*istion
 	}
 
 	var ef *istionetworking.EnvoyFilter
-	for _, elem := range efs.Items {
+	for n, elem := range efs.Items {
 		if !strings.HasPrefix(elem.Name, config.Controller.EnvoyFilterNamePrefix) ||
 			!reflect.DeepEqual(elem.Spec.GetWorkloadSelector().GetLabels(), i.selector) {
 			continue
 		}
 
 		if ef == nil {
-			ef = &elem
+			ef = &efs.Items[n]
 		} else {
 			id := fmt.Sprintf("%s/%s", elem.Namespace, elem.Name)
 			scope.WithField("EnvoyFilter", id).Info("Deleting duplicate EnvoyFilter")
