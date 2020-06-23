@@ -9,7 +9,7 @@ import (
 )
 
 type bearerClaims struct {
-	expirableImpl
+	expirable
 	jwt.Claims
 	Roles map[string][]string `json:"rol"`
 }

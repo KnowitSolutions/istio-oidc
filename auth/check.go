@@ -14,7 +14,7 @@ import (
 const subjectHeader = "x-subject"
 
 type stateClaims struct {
-	expirableImpl
+	expirable
 	Path string `json:"path"`
 }
 
