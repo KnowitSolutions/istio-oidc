@@ -1,4 +1,4 @@
-package introspection
+package telemetry
 
 import (
 	"net/http"

@@ -9,7 +9,7 @@ import (
 	"google.golang.org/grpc"
 	"istio-keycloak/auth"
 	"istio-keycloak/controller"
-	"istio-keycloak/introspection"
+	"istio-keycloak/telemetry"
 	"istio-keycloak/logging"
 	"istio-keycloak/state"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -39,7 +39,7 @@ func main() {
 
 	go startCtrl(oidcCommStore)
 	go startGrpc(keyStore, oidcCommStore)
-	go startIntrospection()
+	go startTelemetry()
 	select {}
 }
 
@@ -104,12 +104,12 @@ func startExtAuthz(srv *grpc.Server, keyStore state.KeyStore, oidcCommStore stat
 	authv2.RegisterAuthorizationServer(srv, extAuth.V2())
 }
 
-func startIntrospection() {
+func startTelemetry() {
 	mux := http.NewServeMux()
 	srv := http.Server{Addr: ":8083", Handler: mux}
 
-	introspection.RegisterProbes(mux)
-	introspection.RegisterMetrics(mux)
+	telemetry.RegisterProbes(mux)
+	telemetry.RegisterMetrics(mux)
 
 	err := srv.ListenAndServe()
 	if err != nil {

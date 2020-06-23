@@ -1,4 +1,4 @@
-package introspection
+package telemetry
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
