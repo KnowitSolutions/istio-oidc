@@ -9,10 +9,12 @@ import (
 	"google.golang.org/grpc"
 	"istio-keycloak/auth"
 	"istio-keycloak/controller"
+	"istio-keycloak/introspection"
 	"istio-keycloak/logging"
 	"istio-keycloak/state"
 	"k8s.io/apimachinery/pkg/runtime"
 	"net"
+	"net/http"
 	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"time"
@@ -37,6 +39,7 @@ func main() {
 
 	go startCtrl(oidcCommStore)
 	go startGrpc(keyStore, oidcCommStore)
+	go startIntrospection()
 	select {}
 }
 
@@ -48,8 +51,13 @@ func startCtrl(oidcCommStore state.OidcCommunicatorStore) {
 		log.WithError(err).Fatal("Unable to load Kubernetes config")
 	}
 
-	var scheme = runtime.NewScheme()
-	mgr, err := ctrl.NewManager(cfg, ctrl.Options{Scheme: scheme})
+	scheme := runtime.NewScheme()
+	opts := ctrl.Options{
+		Scheme:                 scheme,
+		HealthProbeBindAddress: "0",
+		MetricsBindAddress:     "0",
+	}
+	mgr, err := ctrl.NewManager(cfg, opts)
 	if err != nil {
 		log.WithError(err).Fatal("Unable to create manager")
 	}
@@ -94,4 +102,17 @@ func startExtAuthz(srv *grpc.Server, keyStore state.KeyStore, oidcCommStore stat
 	extAuth.Start()
 
 	authv2.RegisterAuthorizationServer(srv, extAuth.V2())
+}
+
+func startIntrospection() {
+	mux := http.NewServeMux()
+	srv := http.Server{Addr: ":8083", Handler: mux}
+
+	introspection.RegisterProbes(mux)
+	introspection.RegisterMetrics(mux)
+
+	err := srv.ListenAndServe()
+	if err != nil {
+		log.WithError(err).Fatal("Unable to start HTTP server")
+	}
 }
