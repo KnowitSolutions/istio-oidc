@@ -2,6 +2,7 @@ package controller
 
 import (
 	"fmt"
+	"istio-keycloak/config"
 	"istio-keycloak/logging/errors"
 	"istio-keycloak/state"
 	istionetworkingapi "istio.io/api/networking/v1alpha3"
@@ -17,8 +18,8 @@ func newEnvoyFilter(ingress ingress, pols []accessPolicy) (*istionetworking.Envo
 	}
 
 	ef := &istionetworking.EnvoyFilter{}
-	ef.Namespace = IstioRootNamespace
-	ef.GenerateName = EnvoyFilterNamePrefix
+	ef.Namespace = config.Controller.IstioRootNamespace
+	ef.GenerateName = config.Controller.EnvoyFilterNamePrefix
 	ef.Spec.WorkloadSelector = &istionetworkingapi.WorkloadSelector{}
 	ef.Spec.WorkloadSelector.Labels = ingress.selector
 	ef.Spec.ConfigPatches = make([]*istionetworkingapi.EnvoyFilter_EnvoyConfigObjectPatch, 0, count)
@@ -79,9 +80,9 @@ func extAuthz(patch *istionetworkingapi.EnvoyFilter_EnvoyConfigObjectPatch) {
 			"@type": "type.googleapis.com/envoy.config.filter.http.ext_authz.v2.ExtAuthz",
 			"grpc_service": map[string]interface{}{
 				"envoy_grpc": map[string]interface{}{
-					"cluster_name": ExtAuthzClusterName,
+					"cluster_name": config.ExtAuthz.ClusterName,
 				},
-				"timeout": fmt.Sprintf("%.fs", ExtAuthzTimeout.Seconds()),
+				"timeout": fmt.Sprintf("%.fs", config.ExtAuthz.Timeout.Seconds()),
 			},
 		},
 	})

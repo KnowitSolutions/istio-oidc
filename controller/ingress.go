@@ -3,6 +3,7 @@ package controller
 import (
 	"bytes"
 	"encoding/binary"
+	"istio-keycloak/config"
 	istionetworking "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	"reflect"
 	"strings"
@@ -27,7 +28,7 @@ func newIngress(gateway *istionetworking.Gateway) *ingress {
 
 	var ns string
 	if reflect.DeepEqual(gateway.Spec.Selector, defaultIngressSelector) {
-		ns = IstioRootNamespace
+		ns = config.Controller.IstioRootNamespace
 	} else {
 		ns = gateway.Namespace
 	}
@@ -43,7 +44,7 @@ func (i *ingress) String() string {
 	var b strings.Builder
 	b.WriteString(i.namespace)
 	b.WriteRune('/')
-	b.WriteString(EnvoyFilterNamePrefix)
+	b.WriteString(config.Controller.EnvoyFilterNamePrefix)
 	b.WriteRune('*')
 	b.WriteRune('{')
 

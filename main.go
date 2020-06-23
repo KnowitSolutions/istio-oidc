@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/cli"
 	"github.com/apex/log/handlers/logfmt"
@@ -8,18 +9,19 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 	"google.golang.org/grpc"
 	"istio-keycloak/auth"
+	"istio-keycloak/config"
 	"istio-keycloak/controller"
-	"istio-keycloak/telemetry"
 	"istio-keycloak/logging"
 	"istio-keycloak/state"
+	"istio-keycloak/telemetry"
 	"k8s.io/apimachinery/pkg/runtime"
 	"net"
 	"net/http"
 	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"time"
 )
 
+// TODO: Configurable forwarded headers (subject, roles, etc). Maybe use Jsonnet?
 // TODO: Test OIDC with internal .svc k8s address from /etc/hosts
 // TODO: Forward tracing headers from gRPC when calling HTTP services
 func main() {
@@ -28,6 +30,10 @@ func main() {
 	} else {
 		log.SetHandler(logfmt.Default)
 	}
+
+	cfg := flag.String("config", "config.yaml", "Configuration file to load")
+	flag.Parse()
+	config.Load(*cfg)
 
 	keyStore := state.NewKeyStore()
 	_, err := keyStore.MakeKey()
@@ -74,10 +80,9 @@ func startCtrl(oidcCommStore state.OidcCommunicatorStore) {
 }
 
 func startGrpc(keyStore state.KeyStore, oidcCommStore state.OidcCommunicatorStore) {
-	addr := ":8082"
-	lis, err := net.Listen("tcp", addr)
+	lis, err := net.Listen("tcp", config.Service.Address)
 	if err != nil {
-		log.WithError(err).WithField("address", addr).
+		log.WithError(err).WithField("address", config.Service.Address).
 			Fatal("Unable to bind TCP socket")
 	}
 
@@ -96,9 +101,6 @@ func startExtAuthz(srv *grpc.Server, keyStore state.KeyStore, oidcCommStore stat
 		OidcCommunicatorStore: oidcCommStore,
 		SessionStore:          state.NewSessionStore(),
 	}
-	state.KeycloakURL = "http://keycloak.localhost"
-	state.SessionCleaningInterval = 30 * time.Second
-	state.SessionCleaningGracePeriod = 30 * time.Second
 	extAuth.Start()
 
 	authv2.RegisterAuthorizationServer(srv, extAuth.V2())
@@ -106,13 +108,14 @@ func startExtAuthz(srv *grpc.Server, keyStore state.KeyStore, oidcCommStore stat
 
 func startTelemetry() {
 	mux := http.NewServeMux()
-	srv := http.Server{Addr: ":8083", Handler: mux}
+	srv := http.Server{Addr: config.Telemetry.Address, Handler: mux}
 
 	telemetry.RegisterProbes(mux)
 	telemetry.RegisterMetrics(mux)
 
 	err := srv.ListenAndServe()
 	if err != nil {
-		log.WithError(err).Fatal("Unable to start HTTP server")
+		log.WithError(err).WithField("address", config.Telemetry.Address).
+			Fatal("Unable to start HTTP server")
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/apex/log"
 	"istio-keycloak/api/v1"
+	"istio-keycloak/config"
 	"istio-keycloak/logging/errors"
 	istionetworking "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	core "k8s.io/api/core/v1"
@@ -66,7 +67,7 @@ func fetchEnvoyFilter(ctx context.Context, c client.Client, i *ingress) (*istion
 
 	var ef *istionetworking.EnvoyFilter
 	for _, elem := range efs.Items {
-		if !strings.HasPrefix(elem.Name, EnvoyFilterNamePrefix) ||
+		if !strings.HasPrefix(elem.Name, config.Controller.EnvoyFilterNamePrefix) ||
 			!reflect.DeepEqual(elem.Spec.GetWorkloadSelector().GetLabels(), i.selector) {
 			continue
 		}

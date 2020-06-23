@@ -17,22 +17,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-	"time"
-)
-
-var (
-	IstioRootNamespace    = "istio-system"
-	EnvoyFilterNamePrefix = "ext-authz-"
-	ExtAuthzClusterName   string
-	ExtAuthzTimeout       time.Duration
 )
 
 type Controller struct {
 	client.Client
 	state.OidcCommunicatorStore
-	credfilt    *eventFilter
-	gwfilt      *eventFilter
-	effilt      *eventFilter
+	credfilt *eventFilter
+	gwfilt   *eventFilter
+	effilt   *eventFilter
 }
 
 func (c *Controller) SetupWithManager(mgr ctrl.Manager) {

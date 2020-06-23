@@ -4,13 +4,9 @@ import (
 	"crypto/sha512"
 	"github.com/apex/log"
 	"golang.org/x/oauth2"
+	"istio-keycloak/config"
 	"sync"
 	"time"
-)
-
-var (
-	SessionCleaningInterval    time.Duration
-	SessionCleaningGracePeriod time.Duration
 )
 
 type SessionStore interface {
@@ -55,13 +51,13 @@ func (ss *sessionStoreImpl) SetSession(token string, data *oauth2.Token) {
 }
 
 func (ss *sessionStoreImpl) sessionCleaner() {
-	tick := time.NewTicker(SessionCleaningInterval)
+	tick := time.NewTicker(config.Sessions.CleaningInterval)
 
 	for {
 		<-tick.C
 
 		start := time.Now()
-		max := start.Add(-SessionCleaningGracePeriod)
+		max := start.Add(-config.Sessions.CleaningGracePeriod)
 		tot := 0
 
 		log.WithField("max", max.Format(time.RFC3339)).

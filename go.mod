@@ -20,6 +20,7 @@ require (
 	google.golang.org/grpc v1.29.1
 	gopkg.in/square/go-jose.v2 v2.5.1
 	gopkg.in/yaml.v2 v2.3.0 // indirect
+	gopkg.in/yaml.v3 v3.0.0-20190905181640-827449938966
 	istio.io/api v0.0.0-20200518203817-6d29a38039bd
 	istio.io/client-go v0.0.0-20200528222059-5465d5e00a32
 	k8s.io/api v0.18.3

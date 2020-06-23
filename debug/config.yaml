@@ -1,0 +1,5 @@
+ExtAuthz:
+  ClusterName: envoy-keycloak
+
+Keycloak:
+  URL: http://keycloak.localhost

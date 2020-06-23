@@ -7,14 +7,11 @@ import (
 	"gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/json"
 	"gopkg.in/square/go-jose.v2/jwt"
+	"istio-keycloak/config"
 	"istio-keycloak/logging/errors"
 	"net/http"
 	"net/url"
 	"time"
-)
-
-var (
-	KeycloakURL string
 )
 
 type providerMetadata struct {
@@ -49,7 +46,7 @@ type oidcCommunicatorImpl struct {
 }
 
 func newOIDCCommunicator(ctx context.Context, cfg *AccessPolicy) (OidcCommunicator, error) {
-	iss := fmt.Sprintf("%s/auth/realms/%s/", KeycloakURL, cfg.Realm)
+	iss := fmt.Sprintf("%s/auth/realms/%s", config.Keycloak.Url, cfg.Realm)
 	addr := iss + "/.well-known/openid-configuration"
 	prov := providerMetadata{}
 	err := doJsonRequest(ctx, addr, &prov)
