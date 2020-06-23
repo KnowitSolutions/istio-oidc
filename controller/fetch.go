@@ -42,7 +42,13 @@ func fetchAccessPolicies(ctx context.Context, c client.Client) ([]accessPolicy, 
 			continue
 		}
 
-		pols[i] = *newAccessPolicy(&ap, &cred, &gw)
+		pol, err := newAccessPolicy(&ap, &cred, &gw)
+		if err != nil {
+			scope.WithError(err).Error("Invalid access policy config")
+			continue
+		}
+
+		pols[i] = *pol
 	}
 
 	return pols, nil

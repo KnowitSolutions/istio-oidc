@@ -19,15 +19,20 @@ type accessPolicy struct {
 	vhosts      []string
 }
 
-func newAccessPolicy(ap *api.AccessPolicy, cred *core.Secret, gw *istionetworking.Gateway) *accessPolicy {
+func newAccessPolicy(ap *api.AccessPolicy, cred *core.Secret, gw *istionetworking.Gateway) (*accessPolicy, error) {
+	apCfg, err := state.NewAccessPolicy(ap, cred)
+	if err != nil {
+		return nil, err
+	}
+
 	return &accessPolicy{
-		AccessPolicy: state.NewAccessPolicy(ap, cred),
+		AccessPolicy: apCfg,
 		key:          fmt.Sprintf("%s/%s", ap.Namespace, ap.Name),
 		credentials:  cred.GetUID(),
 		gateway:      gw.GetUID(),
 		ingress:      *newIngress(gw),
 		vhosts:       virtualHosts(gw),
-	}
+	}, nil
 }
 
 func credentialsKey(ap *api.AccessPolicy) types.NamespacedName {

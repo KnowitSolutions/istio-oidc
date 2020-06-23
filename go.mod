@@ -4,7 +4,6 @@ go 1.14
 
 require (
 	github.com/apex/log v1.3.0
-	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/envoyproxy/go-control-plane v0.9.5
 	github.com/fatih/color v1.9.0 // indirect
 	github.com/go-logr/logr v0.1.0

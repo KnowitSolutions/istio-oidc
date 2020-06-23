@@ -7,6 +7,7 @@ import (
 	"istio-keycloak/api/v1"
 	"istio-keycloak/logging/errors"
 	core "k8s.io/api/core/v1"
+	"net/url"
 	"strings"
 )
 
@@ -28,7 +29,7 @@ type AccessPolicy struct {
 type OIDC struct {
 	ClientID     string
 	ClientSecret string
-	CallbackPath string
+	Callback     url.URL
 }
 
 type Routes map[string]Route
@@ -44,7 +45,7 @@ type accessPolicySpec api.AccessPolicySpec
 type accessPolicyOIDC api.AccessPolicyOIDC
 type accessPolicyRoute api.AccessPolicyRoute
 
-func NewAccessPolicy(ap *api.AccessPolicy, secret *core.Secret) *AccessPolicy {
+func NewAccessPolicy(ap *api.AccessPolicy, secret *core.Secret) (*AccessPolicy, error) {
 	spec := accessPolicySpec(ap.Spec)
 	return spec.convert(ap.Name, secret)
 }
@@ -55,7 +56,7 @@ func (ap *accessPolicySpec) normalize() {
 	}
 }
 
-func (ap *accessPolicySpec) convert(name string, secret *core.Secret) *AccessPolicy {
+func (ap *accessPolicySpec) convert(name string, secret *core.Secret) (*AccessPolicy, error) {
 	ap.normalize()
 
 	oidc := accessPolicyOIDC(ap.OIDC)
@@ -69,13 +70,18 @@ func (ap *accessPolicySpec) convert(name string, secret *core.Secret) *AccessPol
 		}
 	}
 
+	oidcCfg, err := oidc.convert(secret)
+	if err != nil {
+		return nil, err
+	}
+
 	return &AccessPolicy{
 		Name:   name,
 		Realm:  ap.Realm,
-		OIDC:   oidc.convert(secret),
+		OIDC:   oidcCfg,
 		Global: global.convert(ap.GlobalRolesKey),
 		Routes: routes,
-	}
+	}, nil
 }
 
 func (apo *accessPolicyOIDC) normalize() {
@@ -90,13 +96,19 @@ func (apo *accessPolicyOIDC) normalize() {
 	}
 }
 
-func (apo *accessPolicyOIDC) convert(secret *core.Secret) OIDC {
+func (apo *accessPolicyOIDC) convert(secret *core.Secret) (OIDC, error) {
 	apo.normalize()
+
+	cb, err := url.Parse(apo.CallbackPath)
+	if err != nil {
+		return OIDC{}, nil
+	}
+
 	return OIDC{
 		ClientID:     string(secret.Data[apo.CredentialsSecret.ClientIDKey]),
 		ClientSecret: string(secret.Data[apo.CredentialsSecret.ClientSecretKey]),
-		CallbackPath: apo.CallbackPath,
-	}
+		Callback:     *cb,
+	}, nil
 }
 
 func (apr *accessPolicyRoute) normalize(globalRolesKey string) {

@@ -3,7 +3,6 @@ package state
 import (
 	"context"
 	"fmt"
-	"github.com/coreos/go-oidc"
 	"golang.org/x/oauth2"
 	"gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/json"
@@ -11,11 +10,19 @@ import (
 	"istio-keycloak/logging/errors"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 var (
 	KeycloakURL string
 )
+
+type providerMetadata struct {
+	Issuer                string `json:"issuer"`
+	AuthorizationEndpoint string `json:"authorization_endpoint"`
+	TokenEndpoint         string `json:"token_endpoint"`
+	JWKsURI               string `json:"jwks_uri"`
+}
 
 type AccessToken struct {
 	RealmAccess struct {
@@ -26,111 +33,124 @@ type AccessToken struct {
 	} `json:"resource_access"`
 }
 
+type IdToken struct {
+	Subject string `json:"sub"`
+}
+
 type OidcCommunicator interface {
 	IsCallback(url.URL) bool
 	OAuth2(url.URL) *oauth2.Config
-	ExtractTokens(context.Context, *oauth2.Token) (*AccessToken, *oidc.IDToken, error)
+	ExtractTokens(context.Context, *oauth2.Token) (*AccessToken, *IdToken, error)
 }
 
 type oidcCommunicatorImpl struct {
-	callback url.URL
-	cfg      oauth2.Config
-	provider *oidc.Provider
-	verifier *oidc.IDTokenVerifier
+	cfg      OIDC
+	provider providerMetadata
 }
 
 func newOIDCCommunicator(ctx context.Context, cfg *AccessPolicy) (OidcCommunicator, error) {
-	callback, err := url.Parse(cfg.OIDC.CallbackPath)
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to parse callback URL", "url", cfg.OIDC.CallbackPath)
-	}
-
-	iss := fmt.Sprintf("%s/auth/realms/%s", KeycloakURL, cfg.Realm)
-	prov, err := oidc.NewProvider(ctx, iss)
+	iss := fmt.Sprintf("%s/auth/realms/%s/", KeycloakURL, cfg.Realm)
+	addr := iss + "/.well-known/openid-configuration"
+	prov := providerMetadata{}
+	err := doJsonRequest(ctx, addr, &prov)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to fetch OIDC provider config", "issuer", iss)
 	}
 
-	oauth2cfg := oauth2.Config{
-		ClientID:     cfg.OIDC.ClientID,
-		ClientSecret: cfg.OIDC.ClientSecret,
-		Endpoint:     prov.Endpoint(),
-	}
-	verifier := prov.Verifier(&oidc.Config{ClientID: cfg.OIDC.ClientID})
-
 	return &oidcCommunicatorImpl{
-		callback: *callback,
-		cfg:      oauth2cfg,
+		cfg:      cfg.OIDC,
 		provider: prov,
-		verifier: verifier,
 	}, nil
 }
 
 func (oc *oidcCommunicatorImpl) IsCallback(url url.URL) bool {
-	return url.Path == oc.callback.Path
+	return url.Path == oc.cfg.Callback.Path
 }
 
 func (oc *oidcCommunicatorImpl) OAuth2(url url.URL) *oauth2.Config {
-	cfg := oc.cfg
-	cfg.RedirectURL = url.ResolveReference(&oc.callback).String()
-	cfg.Scopes = []string{oidc.ScopeOpenID}
-	return &cfg
+	return &oauth2.Config{
+		ClientID:     oc.cfg.ClientID,
+		ClientSecret: oc.cfg.ClientSecret,
+		Endpoint:     oauth2.Endpoint{
+			AuthURL:   oc.provider.AuthorizationEndpoint,
+			TokenURL:  oc.provider.TokenEndpoint,
+		},
+		RedirectURL: url.ResolveReference(&oc.cfg.Callback).String(),
+		Scopes: []string{"openid"},
+	}
 }
 
-// TODO: This calls JWKs endpoint twice. That is unnecessary. See if it is possible to merge.
-func (oc *oidcCommunicatorImpl) ExtractTokens(ctx context.Context, tok *oauth2.Token) (at *AccessToken, idt *oidc.IDToken, err error) {
-	accTok, err := jwt.ParseSigned(tok.AccessToken)
-	if err != nil {
-		err = errors.Wrap(err, "unable to parse access token", "token", tok.AccessToken)
-		return
-	}
-
-	provClaims := &struct {
-		JWKsURI string `json:"jwks_uri"`
-	}{}
-	err = oc.provider.Claims(provClaims)
-	if err != nil {
-		err = errors.Wrap(err, "unable to retrieve provider claims")
-		return
-	}
-
-	req, err := http.NewRequestWithContext(ctx, "GET", provClaims.JWKsURI, nil)
-	if err != nil {
-		err = errors.Wrap(err, "unable to make request object", "url", provClaims.JWKsURI)
-		return
-	}
-
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		err = errors.Wrap(err, "unable to retrieve JWKs", "url", provClaims.JWKsURI)
-		return
-	}
-	defer func() { _ = res.Body.Close() }()
-
+func (oc *oidcCommunicatorImpl) ExtractTokens(ctx context.Context, tok *oauth2.Token) (at *AccessToken, idt *IdToken, err error) {
 	jwks := &jose.JSONWebKeySet{}
-	err = json.NewDecoder(res.Body).Decode(jwks)
+	err = doJsonRequest(ctx, oc.provider.JWKsURI, jwks)
 	if err != nil {
-		err = errors.Wrap(err, "unable to parse JWKs", "url", provClaims.JWKsURI)
+		err = errors.Wrap(err, "unable to retrieve JWKs")
 		return
 	}
 
-	err = accTok.Claims(jwks, at)
+	at = &AccessToken{}
+	err = claims(tok.AccessToken, oc.provider.Issuer, oc.cfg.ClientID, jwks, at)
 	if err != nil {
-		err = errors.Wrap(err, "unable to deserialize access token", "token", tok)
+		err = errors.Wrap(err, "unable to get access token claims")
 		return
 	}
 
-	rawIdt, ok := tok.Extra("id_token").(string)
-	if !ok {
-		err = errors.New("unable to extract ID token")
-		return
-	}
-
-	idt, err = oc.verifier.Verify(ctx, rawIdt)
+	idt = &IdToken{}
+	err = claims(tok.Extra("id_token").(string), oc.provider.Issuer, oc.cfg.ClientID, jwks, idt)
 	if err != nil {
-		err = errors.Wrap(err, "got invalid ID token", "token", rawIdt)
+		err = errors.Wrap(err, "unable to get ID token claims")
 		return
 	}
 
 	return
+}
+
+func doJsonRequest(ctx context.Context, url string, data interface{}) error {
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return errors.Wrap(err, "failed preparing request", "url", url)
+	}
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return errors.Wrap(err, "communication error", "url", url)
+	}
+	defer func() { _ = res.Body.Close() }()
+
+	err = json.NewDecoder(res.Body).Decode(data)
+	if err != nil {
+		return errors.Wrap(err, "failed decoding JSON", "url", url)
+	}
+
+	return nil
+}
+
+func claims(tok, iss, aud string, jwks *jose.JSONWebKeySet, claims interface{}) error {
+	parsed, err := jwt.ParseSigned(tok)
+	if err != nil {
+		return errors.Wrap(err, "failed paring token", "token", tok)
+	}
+
+	def := &jwt.Claims{}
+	err = parsed.Claims(jwks, def)
+	if err != nil {
+		return errors.Wrap(err, "failed deserializing default claims", "token", tok)
+	}
+
+	exp := jwt.Expected{
+		Issuer:   iss,
+		Audience: jwt.Audience{aud},
+		Time:     time.Now(),
+	}
+	err = def.ValidateWithLeeway(exp, 0)
+	if err != nil {
+		return errors.Wrap(err, "failed validating token", "token", tok)
+	}
+
+	err = parsed.Claims(jwks, claims)
+	if err != nil {
+		return errors.Wrap(err, "failed deserializing custom claims", "token", tok)
+	}
+
+	return nil
 }
