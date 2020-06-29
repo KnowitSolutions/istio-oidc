@@ -53,7 +53,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		return reconcile.Result{}, err
 	}
 
-	log.FromContext(ctx).Info("Updating")
+	log.FromContext(ctx).Info("Updating resource")
 	err = c.Update(ctx, &ef)
 	if err != nil {
 		return reconcile.Result{}, errors.Wrap(err, "failed updating EnvoyFilter")

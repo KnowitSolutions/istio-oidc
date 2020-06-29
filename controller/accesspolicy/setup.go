@@ -36,14 +36,15 @@ func New(mgr ctrl.Manager, oidcComms state.OidcCommunicatorStore) error {
 			builder.WithPredicates(&predicate.ResourceVersionChangedPredicate{})).
 		Watches(
 			&source.Kind{Type: &core.Secret{}},
-			&handler.EnqueueRequestsFromMapFunc{ToRequests: &mapper{mgr.GetClient()}},
+			&handler.EnqueueRequestsFromMapFunc{ToRequests: newSecretMapper(mgr)},
 			builder.WithPredicates(&predicate.GenerationChangedPredicate{})).
 		Watches(
 			&source.Kind{Type: &istionetworking.Gateway{}},
-			&handler.EnqueueRequestsFromMapFunc{ToRequests: &mapper{mgr.GetClient()}},
+			&handler.EnqueueRequestsFromMapFunc{ToRequests: newGatewayMapper(mgr)},
 			builder.WithPredicates(&predicate.GenerationChangedPredicate{})).
-		Owns(
-			&istionetworking.EnvoyFilter{},
+		Watches(
+			&source.Kind{Type: &istionetworking.EnvoyFilter{}},
+			&handler.EnqueueRequestsFromMapFunc{ToRequests: newEnvoyFilterMapper(mgr)},
 			builder.WithPredicates(&predicate.GenerationChangedPredicate{})).
 		Complete(&c)
 	if err != nil {
