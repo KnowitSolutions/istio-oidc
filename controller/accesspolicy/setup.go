@@ -1,7 +1,7 @@
 package accesspolicy
 
 import (
-	"istio-keycloak/api/v1"
+	"istio-keycloak/api"
 	"istio-keycloak/logging/errors"
 	"istio-keycloak/state"
 	istionetworking "istio.io/client-go/pkg/apis/networking/v1alpha3"

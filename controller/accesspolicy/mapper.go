@@ -3,7 +3,7 @@ package accesspolicy
 import (
 	"context"
 	"github.com/apex/log"
-	"istio-keycloak/api/v1"
+	"istio-keycloak/api"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"

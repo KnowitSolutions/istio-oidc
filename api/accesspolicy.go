@@ -21,7 +21,7 @@ type AccessPolicy struct {
 	meta.TypeMeta   `json:",inline"`
 	meta.ObjectMeta `json:"metadata"`
 
-	Spec   AccessPolicySpec   `json:"spec"`
+	Spec AccessPolicySpec `json:"spec"`
 	// +kubebuilder:validation:Optional
 	Status AccessPolicyStatus `json:"status,omitempty"`
 }
@@ -66,9 +66,9 @@ type AccessPolicyRoute struct {
 // +kubebuilder:object:generate=true
 type AccessPolicyStatus struct {
 	// +kubebuilder:validation:Optional
-	Ingress      AccessPolicyStatusIngress `json:"ingress,omitempty"`
+	Ingress AccessPolicyStatusIngress `json:"ingress,omitempty"`
 	// +kubebuilder:validation:Optional
-	VirtualHosts []string                  `json:"virtualHosts,omitempty"`
+	VirtualHosts []string `json:"virtualHosts,omitempty"`
 }
 
 // +kubebuilder:object:generate=true

@@ -3,7 +3,7 @@ package envoyfilter
 import (
 	"context"
 	"github.com/apex/log"
-	"istio-keycloak/api/v1"
+	"istio-keycloak/api"
 	"istio-keycloak/config"
 	"istio-keycloak/logging/errors"
 	"istio-keycloak/state"

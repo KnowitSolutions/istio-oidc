@@ -1,2 +1,2 @@
-crds/
-zz_generated.*
+*.yaml
+zz_generated.*.go

@@ -4,7 +4,7 @@ package api
 
 //go:generate go get sigs.k8s.io/controller-tools/cmd/controller-gen
 //go:generate controller-gen object
-//go:generate controller-gen crd output:dir=../crds
+//go:generate controller-gen crd output:dir=.
 
 import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
