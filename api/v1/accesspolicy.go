@@ -22,7 +22,8 @@ type AccessPolicy struct {
 	meta.ObjectMeta `json:"metadata"`
 
 	Spec   AccessPolicySpec   `json:"spec"`
-	Status AccessPolicyStatus `json:"status"`
+	// +kubebuilder:validation:Optional
+	Status AccessPolicyStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:generate=true
@@ -36,7 +37,7 @@ type AccessPolicySpec struct {
 	GlobalRolesKey string `json:"globalRolesKey"`
 
 	// +kubebuilder:validation:Optional
-	Routes map[string]AccessPolicyRoute `json:"routes"`
+	Routes map[string]AccessPolicyRoute `json:"routes,omitempty"`
 }
 
 type AccessPolicyOIDC struct {
@@ -57,15 +58,17 @@ type AccessPolicyOIDCCredentialsSecret struct {
 // +kubebuilder:object:generate=true
 type AccessPolicyRoute struct {
 	// +kubebuilder:validation:Optional
-	Roles map[string][]string `json:"roles"`
+	Roles map[string][]string `json:"roles,omitempty"`
 	// +kubebuilder:validation:Optional
-	DisableAccessPolicy bool `json:"disableAccessPolicy"`
+	DisableAccessPolicy bool `json:"disableAccessPolicy,omitempty"`
 }
 
 // +kubebuilder:object:generate=true
 type AccessPolicyStatus struct {
-	Ingress      AccessPolicyStatusIngress `json:"ingress"`
-	VirtualHosts []string                  `json:"virtualHosts"`
+	// +kubebuilder:validation:Optional
+	Ingress      AccessPolicyStatusIngress `json:"ingress,omitempty"`
+	// +kubebuilder:validation:Optional
+	VirtualHosts []string                  `json:"virtualHosts,omitempty"`
 }
 
 // +kubebuilder:object:generate=true
