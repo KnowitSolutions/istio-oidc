@@ -16,11 +16,13 @@ type AccessPolicyList struct {
 // +kubebuilder:printcolumn:name=Gateway,type=string,JSONPath=.spec.gateway
 // +kubebuilder:printcolumn:name=Realm,type=string,JSONPath=.spec.realm
 // +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
 type AccessPolicy struct {
 	meta.TypeMeta   `json:",inline"`
 	meta.ObjectMeta `json:"metadata"`
 
-	Spec AccessPolicySpec `json:"spec"`
+	Spec   AccessPolicySpec   `json:"spec"`
+	Status AccessPolicyStatus `json:"status"`
 }
 
 // +kubebuilder:object:generate=true
@@ -58,4 +60,15 @@ type AccessPolicyRoute struct {
 	Roles map[string][]string `json:"roles"`
 	// +kubebuilder:validation:Optional
 	DisableAccessPolicy bool `json:"disableAccessPolicy"`
+}
+
+// +kubebuilder:object:generate=true
+type AccessPolicyStatus struct {
+	Ingress      AccessPolicyStatusIngress `json:"ingress"`
+	VirtualHosts []string                  `json:"virtualHosts"`
+}
+
+// +kubebuilder:object:generate=true
+type AccessPolicyStatusIngress struct {
+	Selector map[string]string `json:"selector"`
 }

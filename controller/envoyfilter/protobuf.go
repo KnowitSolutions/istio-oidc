@@ -1,4 +1,4 @@
-package controller
+package envoyfilter
 
 import ptypes "github.com/gogo/protobuf/types"
 

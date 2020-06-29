@@ -19,15 +19,16 @@ const (
 )
 
 type AccessPolicy struct {
-	Name   string
-	Realm  string
-	OIDC   OIDC
-	Global Route
-	Routes Routes
+	Name         string
+	Realm        string
+	OIDC         OIDC
+	VirtualHosts []string
+	Global       Route
+	Routes       Routes
 }
 
 type OIDC struct {
-	ClientID     string
+	ClientId     string
 	ClientSecret string
 	Callback     url.URL
 }
@@ -41,32 +42,35 @@ type Route struct {
 
 type Roles map[string][]string
 
-type accessPolicySpec api.AccessPolicySpec
+type accessPolicySpecStatus struct {
+	spec   api.AccessPolicySpec
+	status api.AccessPolicyStatus
+}
 type accessPolicyOIDC api.AccessPolicyOIDC
 type accessPolicyRoute api.AccessPolicyRoute
 
 func NewAccessPolicy(ap *api.AccessPolicy, secret *core.Secret) (*AccessPolicy, error) {
-	spec := accessPolicySpec(ap.Spec)
+	spec := accessPolicySpecStatus{ap.Spec, ap.Status}
 	return spec.convert(ap.Name, secret)
 }
 
-func (ap *accessPolicySpec) normalize() {
-	if ap.GlobalRolesKey == "" {
-		ap.GlobalRolesKey = "*"
+func (ap *accessPolicySpecStatus) normalize() {
+	if ap.spec.GlobalRolesKey == "" {
+		ap.spec.GlobalRolesKey = "*"
 	}
 }
 
-func (ap *accessPolicySpec) convert(name string, secret *core.Secret) (*AccessPolicy, error) {
+func (ap *accessPolicySpecStatus) convert(name string, secret *core.Secret) (*AccessPolicy, error) {
 	ap.normalize()
 
-	oidc := accessPolicyOIDC(ap.OIDC)
-	global := accessPolicyRoute(ap.Routes[GlobalRouteKey])
+	oidc := accessPolicyOIDC(ap.spec.OIDC)
+	global := accessPolicyRoute(ap.spec.Routes[GlobalRouteKey])
 
-	routes := make(Routes, len(ap.Routes)-1)
-	for k, route := range ap.Routes {
+	routes := make(Routes, len(ap.spec.Routes)-1)
+	for k, route := range ap.spec.Routes {
 		if k != GlobalRouteKey {
 			route := accessPolicyRoute(route)
-			routes[k] = route.convert(ap.GlobalRolesKey)
+			routes[k] = route.convert(ap.spec.GlobalRolesKey)
 		}
 	}
 
@@ -76,11 +80,12 @@ func (ap *accessPolicySpec) convert(name string, secret *core.Secret) (*AccessPo
 	}
 
 	return &AccessPolicy{
-		Name:   name,
-		Realm:  ap.Realm,
-		OIDC:   oidcCfg,
-		Global: global.convert(ap.GlobalRolesKey),
-		Routes: routes,
+		Name:         name,
+		Realm:        ap.spec.Realm,
+		OIDC:         oidcCfg,
+		VirtualHosts: ap.status.VirtualHosts,
+		Global:       global.convert(ap.spec.GlobalRolesKey),
+		Routes:       routes,
 	}, nil
 }
 
@@ -104,9 +109,15 @@ func (apo *accessPolicyOIDC) convert(secret *core.Secret) (OIDC, error) {
 		return OIDC{}, nil
 	}
 
+	var clientId, clientSecret string
+	if secret != nil {
+		clientId = string(secret.Data[apo.CredentialsSecret.ClientIDKey])
+		clientSecret = string(secret.Data[apo.CredentialsSecret.ClientSecretKey])
+	}
+
 	return OIDC{
-		ClientID:     string(secret.Data[apo.CredentialsSecret.ClientIDKey]),
-		ClientSecret: string(secret.Data[apo.CredentialsSecret.ClientSecretKey]),
+		ClientId:     clientId,
+		ClientSecret: clientSecret,
 		Callback:     *cb,
 	}, nil
 }

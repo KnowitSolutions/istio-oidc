@@ -27,7 +27,7 @@ func (srv *Server) newRequest(address, cookies string, metadata map[string]strin
 		return nil, errors.Wrap(err, "unable to parse address", "address", address)
 	}
 
-	oidc, ok := srv.GetOIDC(metadata["accessPolicy"])
+	oidc, ok := srv.GetOidc(metadata["accessPolicy"])
 	if !ok {
 		return nil, errors.New("unknown accessPolicy", "accessPolicy", metadata["accessPolicy"])
 	}

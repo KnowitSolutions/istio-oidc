@@ -1,4 +1,4 @@
-package controller
+package envoyfilter
 
 import (
 	"fmt"
@@ -9,19 +9,11 @@ import (
 	istionetworking "istio.io/client-go/pkg/apis/networking/v1alpha3"
 )
 
-func newEnvoyFilter(ingress ingress, pols []accessPolicy) (*istionetworking.EnvoyFilter, error) {
+func mkEnvoyFilter(ef *istionetworking.EnvoyFilter, pols []*state.AccessPolicy) error {
 	count := 2
 	for _, pol := range pols {
-		if pol.ingress.key == ingress.key {
-			count += len(pol.vhosts) * len(pol.Routes)
-		}
+		count += len(pol.VirtualHosts) * len(pol.Routes)
 	}
-
-	ef := &istionetworking.EnvoyFilter{}
-	ef.Namespace = config.Controller.IstioRootNamespace
-	ef.GenerateName = config.Controller.EnvoyFilterNamePrefix
-	ef.Spec.WorkloadSelector = &istionetworkingapi.WorkloadSelector{}
-	ef.Spec.WorkloadSelector.Labels = ingress.selector
 	ef.Spec.ConfigPatches = make([]*istionetworkingapi.EnvoyFilter_EnvoyConfigObjectPatch, 0, count)
 
 	extAuthzFilter := &istionetworkingapi.EnvoyFilter_EnvoyConfigObjectPatch{}
@@ -39,18 +31,14 @@ func newEnvoyFilter(ingress ingress, pols []accessPolicy) (*istionetworking.Envo
 	ef.Spec.ConfigPatches = append(ef.Spec.ConfigPatches, extAuthzDisable)
 
 	for _, pol := range pols {
-		if pol.ingress.key != ingress.key {
-			continue
-		}
-
-		for _, vhost := range pol.vhosts {
+		for _, vhost := range pol.VirtualHosts {
 			patch := &istionetworkingapi.EnvoyFilter_EnvoyConfigObjectPatch{}
 			applyToVirtualHost(patch)
 			matchVirtualHost(patch, vhost)
 			merge(patch)
 			err := extAuthzPerRoute(patch, pol.Name, &pol.Global)
 			if err != nil {
-				return nil, err
+				return err
 			}
 
 			ef.Spec.ConfigPatches = append(ef.Spec.ConfigPatches, patch)
@@ -62,7 +50,7 @@ func newEnvoyFilter(ingress ingress, pols []accessPolicy) (*istionetworking.Envo
 				merge(patch)
 				err = extAuthzPerRoute(patch, pol.Name, &routeData)
 				if err != nil {
-					return nil, err
+					return err
 				}
 
 				ef.Spec.ConfigPatches = append(ef.Spec.ConfigPatches, patch)
@@ -70,7 +58,7 @@ func newEnvoyFilter(ingress ingress, pols []accessPolicy) (*istionetworking.Envo
 		}
 	}
 
-	return ef, nil
+	return nil
 }
 
 func extAuthz(patch *istionetworkingapi.EnvoyFilter_EnvoyConfigObjectPatch) {

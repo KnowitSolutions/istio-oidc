@@ -66,7 +66,7 @@ func (oc *oidcCommunicatorImpl) IsCallback(url url.URL) bool {
 
 func (oc *oidcCommunicatorImpl) OAuth2(url url.URL) *oauth2.Config {
 	return &oauth2.Config{
-		ClientID:     oc.cfg.ClientID,
+		ClientID:     oc.cfg.ClientId,
 		ClientSecret: oc.cfg.ClientSecret,
 		Endpoint:     oauth2.Endpoint{
 			AuthURL:   oc.provider.AuthorizationEndpoint,
@@ -86,14 +86,14 @@ func (oc *oidcCommunicatorImpl) ExtractTokens(ctx context.Context, tok *oauth2.T
 	}
 
 	at = &AccessToken{}
-	err = claims(tok.AccessToken, oc.provider.Issuer, oc.cfg.ClientID, jwks, at)
+	err = claims(tok.AccessToken, oc.provider.Issuer, oc.cfg.ClientId, jwks, at)
 	if err != nil {
 		err = errors.Wrap(err, "unable to get access token claims")
 		return
 	}
 
 	idt = &IdToken{}
-	err = claims(tok.Extra("id_token").(string), oc.provider.Issuer, oc.cfg.ClientID, jwks, idt)
+	err = claims(tok.Extra("id_token").(string), oc.provider.Issuer, oc.cfg.ClientId, jwks, idt)
 	if err != nil {
 		err = errors.Wrap(err, "unable to get ID token claims")
 		return

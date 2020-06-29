@@ -68,10 +68,10 @@ func startCtrl(oidcCommStore state.OidcCommunicatorStore) {
 		log.WithError(err).Fatal("Unable to create manager")
 	}
 
-	(&controller.Controller{
-		Client:                mgr.GetClient(),
-		OidcCommunicatorStore: oidcCommStore,
-	}).SetupWithManager(mgr)
+	err = controller.Register(mgr, oidcCommStore)
+	if err != nil {
+		log.WithError(err).Fatal("Unable to register controllers")
+	}
 
 	err = mgr.Start(ctrl.SetupSignalHandler())
 	if err != nil {
