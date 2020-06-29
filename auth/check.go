@@ -98,7 +98,7 @@ func (srv *Server) finishOidc(ctx context.Context, req *request) *response {
 	query := req.url.Query()
 	if query["state"] == nil || len(query["state"]) != 1 ||
 		query["code"] == nil || len(query["code"]) != 1 {
-		log.WithFields(req).Warn("Invalid OIDC callback")
+		log.WithFields(req).Error("Invalid OIDC callback")
 		return &response{status: http.StatusBadRequest}
 	}
 
@@ -133,7 +133,7 @@ func (srv *Server) updateToken(ctx context.Context, req *request) *response {
 	tok, err := src.Token()
 	if err != nil {
 		err = errors.Wrap(err, "failed getting access token")
-		log.WithFields(req).WithError(err).Warn("Unable to refresh access token")
+		log.WithFields(req).WithError(err).Error("Unable to refresh access token")
 		return &response{status: http.StatusForbidden}
 	}
 

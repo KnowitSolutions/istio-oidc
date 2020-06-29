@@ -106,7 +106,7 @@ func (apo *accessPolicyOIDC) convert(secret *core.Secret) (OIDC, error) {
 
 	cb, err := url.Parse(apo.CallbackPath)
 	if err != nil {
-		return OIDC{}, nil
+		return OIDC{}, err
 	}
 
 	var clientId, clientSecret string

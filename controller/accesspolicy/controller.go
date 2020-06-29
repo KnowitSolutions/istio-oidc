@@ -2,6 +2,7 @@ package accesspolicy
 
 import (
 	"context"
+	"github.com/apex/log"
 	"istio-keycloak/api/v1"
 	"istio-keycloak/config"
 	"istio-keycloak/logging/errors"
@@ -9,9 +10,11 @@ import (
 	istionetworkingapi "istio.io/api/networking/v1alpha3"
 	istionetworking "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	core "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"strings"
 	"sync"
@@ -21,6 +24,7 @@ const finalizer = "finalizer.istio-keycloak"
 
 type controller struct {
 	client.Client
+	*runtime.Scheme
 	state.OidcCommunicatorStore
 }
 
@@ -34,6 +38,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	}
 
 	if ap.DeletionTimestamp.IsZero() && !contains(ap.Finalizers, finalizer) {
+		log.WithField("AccessPolicy", ap.Name).Info("Adding finalizer")
 		ap.Finalizers = append(ap.Finalizers, finalizer)
 		if err := c.Update(ctx, &ap); err != nil {
 			return reconcile.Result{}, err
@@ -59,6 +64,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	}
 
 	if !ap.DeletionTimestamp.IsZero() && contains(ap.Finalizers, finalizer) {
+		log.WithField("AccessPolicy", ap.Name).Info("Removing finalizer")
 		ap.Finalizers = remove(ap.Finalizers, finalizer)
 		if err := c.Update(ctx, &ap); err != nil {
 			return reconcile.Result{}, err
@@ -81,6 +87,7 @@ func (c *controller) reconcileStatus(ctx context.Context, ap *api.AccessPolicy) 
 		ap.Status.Ingress.Selector = selector(&gw)
 		ap.Status.VirtualHosts = virtualHosts(&gw)
 
+		log.WithField("AccessPolicy", ap.Name).Info("Updating status")
 		err = c.Status().Update(ctx, ap)
 		if err != nil {
 			return err
@@ -91,29 +98,50 @@ func (c *controller) reconcileStatus(ctx context.Context, ap *api.AccessPolicy) 
 }
 
 func (c *controller) reconcileEnvoyFilter(ctx context.Context, ap *api.AccessPolicy) error {
-	// TODO: Verify that AP is good to go
+	if len(ap.Status.Ingress.Selector) == 0 {
+		log.WithField("AccessPolicy", ap.Name).Info("Missing workload selector")
+		return nil
+	}
 
-	efs := istionetworking.EnvoyFilterList{}
-	err := c.List(ctx, &efs)
+	allEfs := istionetworking.EnvoyFilterList{}
+	err := c.List(ctx, &allEfs, client.InNamespace(config.Controller.IstioRootNamespace))
 	if err != nil {
 		return err
 	}
 
-	filtered := make([]*istionetworking.EnvoyFilter, 0, len(efs.Items))
-	for i := range efs.Items {
-		if strings.HasPrefix(efs.Items[i].Name, config.Controller.EnvoyFilterNamePrefix) &&
-			reflect.DeepEqual(efs.Items[i].Spec.WorkloadSelector, ap.Status.Ingress.Selector) {
-			filtered = append(filtered, &efs.Items[i])
+	efs := make([]*istionetworking.EnvoyFilter, 0, len(allEfs.Items))
+	for i := range allEfs.Items {
+		if strings.HasPrefix(allEfs.Items[i].Name, config.Controller.EnvoyFilterNamePrefix) &&
+			reflect.DeepEqual(allEfs.Items[i].Spec.WorkloadSelector, ap.Status.Ingress.Selector) {
+			efs = append(efs, &allEfs.Items[i])
 		}
 	}
 
-	if len(filtered) == 0 {
-		ef := istionetworking.EnvoyFilter{}
+	if len(efs) == 0 {
+		log.WithField("AccessPolicy", ap.Name).Info("Creating EnvoyFilter")
+		ef := &istionetworking.EnvoyFilter{}
 		ef.Namespace = config.Controller.IstioRootNamespace
 		ef.GenerateName = config.Controller.EnvoyFilterNamePrefix
 		ef.Spec.WorkloadSelector = &istionetworkingapi.WorkloadSelector{}
 		ef.Spec.WorkloadSelector.Labels = ap.Status.Ingress.Selector
-		err = c.Create(ctx, &ef)
+
+		err = c.Create(ctx, ef)
+		if err != nil {
+			return err
+		}
+
+		efs = append(efs, ef)
+	}
+
+	for _, ef := range efs {
+		log.WithFields(log.Fields{"AccessPolicy": ap.Name, "EnvoyFilter": ef.Name}).
+			Info("Adding owner")
+		err = controllerutil.SetOwnerReference(ap, ef, c.Scheme)
+		if err != nil {
+			return err
+		}
+
+		err = c.Update(ctx, ef)
 		if err != nil {
 			return err
 		}
@@ -137,8 +165,10 @@ func (c *controller) reconcileAuth(ctx context.Context, ap *api.AccessPolicy) er
 			return err
 		}
 
+		log.WithField("AccessPolicy", ap.Name).Info("Updating OIDC settings")
 		c.UpdateOicd(ctx, cfg)
 	} else {
+		log.WithField("AccessPolicy", ap.Name).Info("Deleting OIDC settings")
 		c.DeleteOidc(ap.Name)
 	}
 

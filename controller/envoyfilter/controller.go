@@ -2,10 +2,12 @@ package envoyfilter
 
 import (
 	"context"
+	"github.com/apex/log"
 	"istio-keycloak/api/v1"
 	"istio-keycloak/config"
 	"istio-keycloak/state"
 	istionetworking "istio.io/client-go/pkg/apis/networking/v1alpha3"
+	"k8s.io/apimachinery/pkg/types"
 	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -26,10 +28,39 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		return reconcile.Result{}, err
 	}
 
-	allEfs := istionetworking.EnvoyFilterList{}
-	err = c.List(ctx, &allEfs, client.InNamespace(config.Controller.IstioRootNamespace))
+	dup, err := c.isDuplicate(ctx, &ef)
 	if err != nil {
 		return reconcile.Result{}, err
+	} else if dup {
+		log.WithField("EnvoyFilter", ef.Name).Info("Deleting duplicate")
+		err = c.Delete(ctx, &ef)
+		return reconcile.Result{}, err
+	}
+
+	aps, err := c.fetchAccessPolicies(ctx, &ef)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	
+	err = mkEnvoyFilter(&ef, aps)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	log.WithField("EnvoyFilter", ef.Name).Info("Updating")
+	err = c.Update(ctx, &ef)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	return reconcile.Result{}, nil
+}
+
+func (c *controller) isDuplicate(ctx context.Context, ef *istionetworking.EnvoyFilter) (bool, error) {
+	allEfs := istionetworking.EnvoyFilterList{}
+	err := c.List(ctx, &allEfs, client.InNamespace(config.Controller.IstioRootNamespace))
+	if err != nil {
+		return false, err
 	}
 
 	efs := make([]*istionetworking.EnvoyFilter, 0, len(allEfs.Items))
@@ -41,39 +72,38 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	}
 
 	sort.Slice(efs, func(i, j int) bool {
-		return strings.Compare(efs[i].Name, efs[j].Name) == -1
+		iTime := efs[i].CreationTimestamp
+		jTime := efs[j].CreationTimestamp
+		return iTime.Before(&jTime)
 	})
 
-	if ef.Name != efs[0].Name {
-		err = c.Delete(ctx, &ef)
-		return reconcile.Result{}, err
+	return ef.Name != efs[0].Name, nil
+}
+
+func (c *controller) fetchAccessPolicies(ctx context.Context, ef *istionetworking.EnvoyFilter) ([]*state.AccessPolicy, error) {
+	owners := make(map[types.UID]bool, len(ef.OwnerReferences))
+	for _, owner := range ef.OwnerReferences {
+		owners[owner.UID] = true
 	}
 
 	allAps := api.AccessPolicyList{}
-	err = c.List(ctx, &allEfs)
+	err := c.List(ctx, &allAps)
 	if err != nil {
-		return reconcile.Result{}, err
+		return nil, err
 	}
 
 	aps := make([]*state.AccessPolicy, 0, len(allAps.Items))
 	for i := range allAps.Items {
-		if reflect.DeepEqual(allAps.Items[i].Status.Ingress.Selector, ef.Spec.WorkloadSelector) {
+		if owners[allAps.Items[i].UID] {
 			ap, err := state.NewAccessPolicy(&allAps.Items[i], nil)
 			if err != nil {
+				log.WithError(err).WithField("AccessPolicy", allAps.Items[i].Name).
+					Error("Invalid AccessPolicy")
+			} else {
 				aps = append(aps, ap)
 			}
 		}
 	}
-	
-	err = mkEnvoyFilter(&ef, aps)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-	
-	err = c.Update(ctx, &ef)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
 
-	return reconcile.Result{}, nil
+	return aps, nil
 }

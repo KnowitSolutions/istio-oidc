@@ -28,7 +28,7 @@ func New(mgr ctrl.Manager, oidcComms state.OidcCommunicatorStore) error {
 		return errors.Wrap(err, "failed making AccessPolicy controller")
 	}
 
-	c := controller{mgr.GetClient(), oidcComms}
+	c := controller{mgr.GetClient(), mgr.GetScheme(), oidcComms}
 	err = builder.
 		ControllerManagedBy(mgr).
 		For(
@@ -39,8 +39,11 @@ func New(mgr ctrl.Manager, oidcComms state.OidcCommunicatorStore) error {
 			&handler.EnqueueRequestsFromMapFunc{ToRequests: &mapper{mgr.GetClient()}},
 			builder.WithPredicates(&predicate.GenerationChangedPredicate{})).
 		Watches(
-			&source.Kind{Type: &istionetworking.EnvoyFilter{}},
+			&source.Kind{Type: &istionetworking.Gateway{}},
 			&handler.EnqueueRequestsFromMapFunc{ToRequests: &mapper{mgr.GetClient()}},
+			builder.WithPredicates(&predicate.GenerationChangedPredicate{})).
+		Owns(
+			&istionetworking.EnvoyFilter{},
 			builder.WithPredicates(&predicate.GenerationChangedPredicate{})).
 		Complete(&c)
 	if err != nil {
