@@ -7,7 +7,6 @@ import (
 	"istio-keycloak/config"
 	"istio-keycloak/logging/errors"
 	"istio-keycloak/state"
-	istionetworkingapi "istio.io/api/networking/v1alpha3"
 	istionetworking "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -118,13 +117,7 @@ func (c *controller) reconcileEnvoyFilter(ctx context.Context, ap *api.AccessPol
 
 	if len(efs) == 0 {
 		log.WithField("AccessPolicy", ap.Name).Info("Creating EnvoyFilter")
-		ef := &istionetworking.EnvoyFilter{}
-		ef.Namespace = config.Controller.IstioRootNamespace
-		ef.GenerateName = config.Controller.EnvoyFilterNamePrefix
-		ef.Spec.WorkloadSelector = &istionetworkingapi.WorkloadSelector{}
-		ef.Spec.WorkloadSelector.Labels = ap.Status.Ingress.Selector
-
-		err = c.Create(ctx, ef)
+		err = c.Create(ctx, newEnvoyFilter(ap))
 		if err != nil {
 			return errors.Wrap(err, "failed creating EnvoyFilter")
 		}

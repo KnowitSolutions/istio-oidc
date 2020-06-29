@@ -21,7 +21,7 @@ type logger struct {
 
 func (l *logger) Info(msg string, kvs ...interface{}) {
 	if l.Enabled() {
-		fields := mkFields(kvs)
+		fields := newFields(kvs)
 		l.WithFields(fields).WithField(loggerKey, l.name).Info(msg)
 	}
 }
@@ -31,7 +31,7 @@ func (l *logger) Enabled() bool {
 }
 
 func (l *logger) Error(err error, msg string, kvs ...interface{}) {
-	fields := mkFields(kvs)
+	fields := newFields(kvs)
 	l.WithError(err).WithFields(fields).WithField(loggerKey, l.name).Error(msg)
 }
 
@@ -42,7 +42,7 @@ func (l *logger) V(level int) logr.InfoLogger {
 }
 
 func (l *logger) WithValues(kvs ...interface{}) logr.Logger {
-	fields := mkFields(kvs)
+	fields := newFields(kvs)
 	dup := *l
 	dup.Interface = l.WithFields(fields)
 	return &dup
@@ -57,7 +57,7 @@ func (l *logger) WithName(name string) logr.Logger {
 	return &dup
 }
 
-func mkFields(kvs []interface{}) *log.Fields {
+func newFields(kvs []interface{}) *log.Fields {
 	if len(kvs)%2 != 0 {
 		panic("inconsistent key-value pairs")
 	}

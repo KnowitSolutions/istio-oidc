@@ -42,7 +42,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		return reconcile.Result{}, err
 	}
 
-	err = mkEnvoyFilter(&ef, aps)
+	err = newEnvoyFilter(&ef, aps)
 	if err != nil {
 		return reconcile.Result{}, err
 	}

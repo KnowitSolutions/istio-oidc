@@ -9,7 +9,7 @@ import (
 	istionetworking "istio.io/client-go/pkg/apis/networking/v1alpha3"
 )
 
-func mkEnvoyFilter(ef *istionetworking.EnvoyFilter, pols []*state.AccessPolicy) error {
+func newEnvoyFilter(ef *istionetworking.EnvoyFilter, pols []*state.AccessPolicy) error {
 	count := 2
 	for _, pol := range pols {
 		count += len(pol.VirtualHosts) * len(pol.Routes)
