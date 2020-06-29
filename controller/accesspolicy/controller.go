@@ -102,7 +102,7 @@ func (c *controller) reconcileStatus(ctx context.Context, ap *api.AccessPolicy) 
 }
 
 func (c *controller) reconcileEnvoyFilter(ctx context.Context,  ap *api.AccessPolicy) error {
-	if len(ap.Status.Ingress.Selector) == 0 {
+	if len(ap.Status.GetIngress().GetSelector()) == 0 {
 		log.FromContext(ctx).Info("Missing workload selector")
 		return nil
 	}
@@ -116,7 +116,7 @@ func (c *controller) reconcileEnvoyFilter(ctx context.Context,  ap *api.AccessPo
 	efs := make([]*istionetworking.EnvoyFilter, 0, len(allEfs.Items))
 	for i := range allEfs.Items {
 		if strings.HasPrefix(allEfs.Items[i].Name, config.Controller.EnvoyFilterNamePrefix) &&
-			reflect.DeepEqual(allEfs.Items[i].Spec.WorkloadSelector, ap.Status.Ingress.Selector) {
+			reflect.DeepEqual(allEfs.Items[i].Spec.GetWorkloadSelector().GetLabels(), ap.Status.Ingress.Selector) {
 			efs = append(efs, &allEfs.Items[i])
 		}
 	}

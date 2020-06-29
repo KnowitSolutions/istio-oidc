@@ -71,6 +71,6 @@ func newEnvoyFilterMapper(mgr ctrl.Manager) handler.Mapper {
 
 func efIsRelated(obj *handler.MapObject, ap *api.AccessPolicy) bool {
 	apSel := ap.Status.GetIngress().GetSelector()
-	efSel := obj.Object.(*istionetworking.EnvoyFilter).Spec.WorkloadSelector
+	efSel := obj.Object.(*istionetworking.EnvoyFilter).Spec.GetWorkloadSelector().GetLabels()
 	return reflect.DeepEqual(apSel, efSel)
 }

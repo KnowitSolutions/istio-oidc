@@ -72,7 +72,7 @@ func (c *controller) isDuplicate(ctx context.Context, ef *istionetworking.EnvoyF
 	efs := make([]*istionetworking.EnvoyFilter, 0, len(allEfs.Items))
 	for i := range allEfs.Items {
 		if strings.HasPrefix(allEfs.Items[i].Name, config.Controller.EnvoyFilterNamePrefix) &&
-			reflect.DeepEqual(allEfs.Items[i].Spec.WorkloadSelector, ef.Spec.WorkloadSelector) {
+			reflect.DeepEqual(allEfs.Items[i].Spec.GetWorkloadSelector().GetLabels(), ef.Spec.GetWorkloadSelector().GetLabels()) {
 			efs = append(efs, &allEfs.Items[i])
 		}
 	}
@@ -95,7 +95,7 @@ func (c *controller) fetchAccessPolicies(ctx context.Context, ef *istionetworkin
 
 	aps := make([]*state.AccessPolicy, 0, len(allAps.Items))
 	for i := range allAps.Items {
-		if reflect.DeepEqual(allAps.Items[i].Status.Ingress.Selector, ef.Spec.WorkloadSelector) {
+		if reflect.DeepEqual(allAps.Items[i].Status.GetIngress().GetSelector(), ef.Spec.GetWorkloadSelector().GetLabels()) {
 			ap, err := state.NewAccessPolicy(&allAps.Items[i], nil)
 			if err != nil {
 				log.FromContext(ctx).WithError(err).WithField("AccessPolicy", allAps.Items[i].Name).
