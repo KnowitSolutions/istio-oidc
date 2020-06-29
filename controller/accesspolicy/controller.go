@@ -14,7 +14,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"strings"
 	"sync"
@@ -128,22 +127,6 @@ func (c *controller) reconcileEnvoyFilter(ctx context.Context, ap *api.AccessPol
 		err = c.Create(ctx, ef)
 		if err != nil {
 			return errors.Wrap(err, "failed creating EnvoyFilter")
-		}
-
-		efs = append(efs, ef)
-	}
-
-	for _, ef := range efs {
-		log.WithFields(log.Fields{"AccessPolicy": ap.Name, "EnvoyFilter": ef.Name}).
-			Info("Adding owner")
-		err = controllerutil.SetOwnerReference(ap, ef, c.Scheme)
-		if err != nil {
-			return errors.Wrap(err, "failed setting owner reference")
-		}
-
-		err = c.Update(ctx, ef)
-		if err != nil {
-			return errors.Wrap(err, "failed updating EnvoyFilter")
 		}
 	}
 

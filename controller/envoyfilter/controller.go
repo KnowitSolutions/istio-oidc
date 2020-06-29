@@ -8,7 +8,6 @@ import (
 	"istio-keycloak/logging/errors"
 	"istio-keycloak/state"
 	istionetworking "istio.io/client-go/pkg/apis/networking/v1alpha3"
-	"k8s.io/apimachinery/pkg/types"
 	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -82,11 +81,6 @@ func (c *controller) isDuplicate(ctx context.Context, ef *istionetworking.EnvoyF
 }
 
 func (c *controller) fetchAccessPolicies(ctx context.Context, ef *istionetworking.EnvoyFilter) ([]*state.AccessPolicy, error) {
-	owners := make(map[types.UID]bool, len(ef.OwnerReferences))
-	for _, owner := range ef.OwnerReferences {
-		owners[owner.UID] = true
-	}
-
 	allAps := api.AccessPolicyList{}
 	err := c.List(ctx, &allAps)
 	if err != nil {
@@ -95,7 +89,7 @@ func (c *controller) fetchAccessPolicies(ctx context.Context, ef *istionetworkin
 
 	aps := make([]*state.AccessPolicy, 0, len(allAps.Items))
 	for i := range allAps.Items {
-		if owners[allAps.Items[i].UID] {
+		if reflect.DeepEqual(allAps.Items[i].Status.Ingress.Selector, ef.Spec.WorkloadSelector) {
 			ap, err := state.NewAccessPolicy(&allAps.Items[i], nil)
 			if err != nil {
 				log.WithError(err).WithField("AccessPolicy", allAps.Items[i].Name).
