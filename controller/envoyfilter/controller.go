@@ -5,6 +5,7 @@ import (
 	"github.com/apex/log"
 	"istio-keycloak/api/v1"
 	"istio-keycloak/config"
+	"istio-keycloak/logging/errors"
 	"istio-keycloak/state"
 	istionetworking "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	"k8s.io/apimachinery/pkg/types"
@@ -25,7 +26,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	ef := istionetworking.EnvoyFilter{}
 	err := c.Get(ctx, req.NamespacedName, &ef)
 	if err != nil {
-		return reconcile.Result{}, err
+		return reconcile.Result{}, errors.Wrap(err, "failed getting EnvoyFilter")
 	}
 
 	dup, err := c.isDuplicate(ctx, &ef)
@@ -34,14 +35,14 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	} else if dup {
 		log.WithField("EnvoyFilter", ef.Name).Info("Deleting duplicate")
 		err = c.Delete(ctx, &ef)
-		return reconcile.Result{}, err
+		return reconcile.Result{}, errors.Wrap(err, "failed deleting EnvoyFilter")
 	}
 
 	aps, err := c.fetchAccessPolicies(ctx, &ef)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	
+
 	err = mkEnvoyFilter(&ef, aps)
 	if err != nil {
 		return reconcile.Result{}, err
@@ -50,7 +51,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	log.WithField("EnvoyFilter", ef.Name).Info("Updating")
 	err = c.Update(ctx, &ef)
 	if err != nil {
-		return reconcile.Result{}, err
+		return reconcile.Result{}, errors.Wrap(err, "failed updating EnvoyFilter")
 	}
 
 	return reconcile.Result{}, nil
@@ -60,7 +61,7 @@ func (c *controller) isDuplicate(ctx context.Context, ef *istionetworking.EnvoyF
 	allEfs := istionetworking.EnvoyFilterList{}
 	err := c.List(ctx, &allEfs, client.InNamespace(config.Controller.IstioRootNamespace))
 	if err != nil {
-		return false, err
+		return false, errors.Wrap(err, "failed listing EnvoyFilters")
 	}
 
 	efs := make([]*istionetworking.EnvoyFilter, 0, len(allEfs.Items))
@@ -89,7 +90,7 @@ func (c *controller) fetchAccessPolicies(ctx context.Context, ef *istionetworkin
 	allAps := api.AccessPolicyList{}
 	err := c.List(ctx, &allAps)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed listing AccessPolicies")
 	}
 
 	aps := make([]*state.AccessPolicy, 0, len(allAps.Items))

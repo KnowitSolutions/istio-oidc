@@ -34,14 +34,14 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	ap := api.AccessPolicy{}
 	err := c.Get(ctx, req.NamespacedName, &ap)
 	if err != nil {
-		return reconcile.Result{}, err
+		return reconcile.Result{}, errors.Wrap(err, "failed getting AccessPolicy")
 	}
 
 	if ap.DeletionTimestamp.IsZero() && !contains(ap.Finalizers, finalizer) {
 		log.WithField("AccessPolicy", ap.Name).Info("Adding finalizer")
 		ap.Finalizers = append(ap.Finalizers, finalizer)
 		if err := c.Update(ctx, &ap); err != nil {
-			return reconcile.Result{}, err
+			return reconcile.Result{}, errors.Wrap(err, "failed adding AccessPolicy finalizer")
 		}
 	}
 
@@ -67,7 +67,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		log.WithField("AccessPolicy", ap.Name).Info("Removing finalizer")
 		ap.Finalizers = remove(ap.Finalizers, finalizer)
 		if err := c.Update(ctx, &ap); err != nil {
-			return reconcile.Result{}, err
+			return reconcile.Result{}, errors.Wrap(err, "failed removing AccessPolicy finalizer")
 		}
 	}
 
@@ -81,7 +81,7 @@ func (c *controller) reconcileStatus(ctx context.Context, ap *api.AccessPolicy) 
 		gw := istionetworking.Gateway{}
 		err := c.Get(ctx, gwKey, &gw)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "failed getting Gateway")
 		}
 
 		ap.Status.Ingress.Selector = selector(&gw)
@@ -90,7 +90,7 @@ func (c *controller) reconcileStatus(ctx context.Context, ap *api.AccessPolicy) 
 		log.WithField("AccessPolicy", ap.Name).Info("Updating status")
 		err = c.Status().Update(ctx, ap)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "failed updating AccessPolicy status")
 		}
 	}
 
@@ -106,7 +106,7 @@ func (c *controller) reconcileEnvoyFilter(ctx context.Context, ap *api.AccessPol
 	allEfs := istionetworking.EnvoyFilterList{}
 	err := c.List(ctx, &allEfs, client.InNamespace(config.Controller.IstioRootNamespace))
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed listing EnvoyFilters")
 	}
 
 	efs := make([]*istionetworking.EnvoyFilter, 0, len(allEfs.Items))
@@ -127,7 +127,7 @@ func (c *controller) reconcileEnvoyFilter(ctx context.Context, ap *api.AccessPol
 
 		err = c.Create(ctx, ef)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "failed creating EnvoyFilter")
 		}
 
 		efs = append(efs, ef)
@@ -138,12 +138,12 @@ func (c *controller) reconcileEnvoyFilter(ctx context.Context, ap *api.AccessPol
 			Info("Adding owner")
 		err = controllerutil.SetOwnerReference(ap, ef, c.Scheme)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "failed setting owner reference")
 		}
 
 		err = c.Update(ctx, ef)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "failed updating EnvoyFilter")
 		}
 	}
 
@@ -157,12 +157,12 @@ func (c *controller) reconcileAuth(ctx context.Context, ap *api.AccessPolicy) er
 		cred := core.Secret{}
 		err := c.Get(ctx, credKey, &cred)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "failed getting credentials Secret")
 		}
 
 		cfg, err := state.NewAccessPolicy(ap, &cred)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "invalid AccessPolicy")
 		}
 
 		log.WithField("AccessPolicy", ap.Name).Info("Updating OIDC settings")
