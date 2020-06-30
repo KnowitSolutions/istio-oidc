@@ -47,6 +47,12 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		return reconcile.Result{}, err
 	}
 
+	if len(aps) == 0 {
+		log.FromContext(ctx).Info("Deleting resource")
+		err = c.Delete(ctx, &ef)
+		return reconcile.Result{}, err
+	}
+
 	for _, ap := range aps {
 		log.FromContext(ctx).WithField("AccessPolicy", ap.Name).
 			Info("Including AccessPolicy in EnvoyFilter")
