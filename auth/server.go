@@ -27,14 +27,14 @@ func (srv *Server) newRequest(address, cookies string, metadata map[string]strin
 		return nil, errors.Wrap(err, "unable to parse address", "address", address)
 	}
 
-	oidc, ok := srv.GetOidc(metadata["accessPolicy"])
+	oidc, ok := srv.GetOidc(metadata[state.AccessPolicyKey])
 	if !ok {
-		return nil, errors.New("unknown accessPolicy", "accessPolicy", metadata["accessPolicy"])
+		return nil, errors.New("unknown accessPolicy", "AccessPolicy", metadata[state.AccessPolicyKey])
 	}
 
 	roles := &state.Roles{}
-	if _, ok = metadata["roles"]; ok {
-		err = roles.Decode(metadata["roles"])
+	if _, ok = metadata[state.RolesKey]; ok {
+		err = roles.Decode(metadata[state.RolesKey])
 		if err != nil {
 			return nil, errors.Wrap(err, "unable to decode roles")
 		}
@@ -44,9 +44,10 @@ func (srv *Server) newRequest(address, cookies string, metadata map[string]strin
 	req.Header.Add("Cookie", cookies)
 
 	return &request{
-		url:     *parsed,
-		cookies: req.Cookies(),
-		oidc:    oidc,
-		roles:   *roles,
+		url:          *parsed,
+		cookies:      req.Cookies(),
+		accessPolicy: metadata[state.AccessPolicyKey],
+		oidc:         oidc,
+		roles:        *roles,
 	}, nil
 }

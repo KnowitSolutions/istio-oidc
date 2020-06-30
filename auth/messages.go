@@ -63,7 +63,7 @@ func (req *request) Fields() log.Fields {
 	}
 
 	return log.Fields{
-		"accessPolicy": req.accessPolicy,
+		"AccessPolicy": req.accessPolicy,
 		"url":          loc.String(),
 		"bearer":       bearer,
 		"session":      req.session != nil,
