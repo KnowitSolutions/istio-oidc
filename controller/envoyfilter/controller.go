@@ -48,6 +48,11 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		return reconcile.Result{}, err
 	}
 
+	for _, ap := range aps {
+		log.FromContext(ctx).WithField("AccessPolicy", ap.Name).
+			Info("Including AccessPolicy in EnvoyFilter")
+	}
+
 	err = newEnvoyFilter(&ef, aps)
 	if err != nil {
 		return reconcile.Result{}, err

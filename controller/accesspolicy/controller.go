@@ -127,6 +127,9 @@ func (c *controller) reconcileEnvoyFilter(ctx context.Context,  ap *api.AccessPo
 		if err != nil {
 			return errors.Wrap(err, "failed creating EnvoyFilter")
 		}
+	} else {
+		log.FromContext(ctx).WithField("EnvoyFilter", efs[0].Name).
+			Info("Found EnvoyFilter")
 	}
 
 	return nil
