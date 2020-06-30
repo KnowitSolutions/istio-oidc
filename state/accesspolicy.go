@@ -113,8 +113,15 @@ func (apo *accessPolicyOIDC) convert(secret *core.Secret) (OIDC, error) {
 
 	var clientId, clientSecret string
 	if secret != nil {
-		clientId = string(secret.Data[apo.CredentialsSecret.ClientIDKey])
-		clientSecret = string(secret.Data[apo.CredentialsSecret.ClientSecretKey])
+		clientIdBytes, ok1 := secret.Data[apo.CredentialsSecret.ClientIDKey]
+		clientSecretBytes, ok2 := secret.Data[apo.CredentialsSecret.ClientSecretKey]
+
+		if !ok1 || !ok2 {
+			return OIDC{}, errors.New("failed extracting client ID and secret")
+		} else {
+			clientId = string(clientIdBytes)
+			clientSecret = string(clientSecretBytes)
+		}
 	}
 
 	return OIDC{
