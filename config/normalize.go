@@ -24,9 +24,15 @@ func (c *controller) normalize() {
 	} else if !strings.HasSuffix(c.EnvoyFilterNamePrefix, "-") {
 		c.EnvoyFilterNamePrefix += "-"
 	}
+
+	if c.EnvoyFilterLabels == nil {
+		c.EnvoyFilterLabels = map[string]string{
+			"istio-keycloak": "ext-authz",
+		}
+	}
 }
 
-func (s *service) normalize()  {
+func (s *service) normalize() {
 	if s.Address == "" {
 		s.Address = ":8080"
 	}

@@ -16,7 +16,6 @@ import (
 	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"strings"
 	"sync"
 )
 
@@ -101,22 +100,23 @@ func (c *controller) reconcileStatus(ctx context.Context, ap *api.AccessPolicy) 
 	return nil
 }
 
-func (c *controller) reconcileEnvoyFilter(ctx context.Context,  ap *api.AccessPolicy) error {
+func (c *controller) reconcileEnvoyFilter(ctx context.Context, ap *api.AccessPolicy) error {
 	if len(ap.Status.GetIngress().GetSelector()) == 0 {
 		log.FromContext(ctx).Info("Missing workload selector")
 		return nil
 	}
 
 	allEfs := istionetworking.EnvoyFilterList{}
-	err := c.List(ctx, &allEfs, client.InNamespace(config.Controller.IstioRootNamespace))
+	err := c.List(ctx, &allEfs,
+		client.InNamespace(config.Controller.IstioRootNamespace),
+		client.MatchingLabels(config.Controller.EnvoyFilterLabels))
 	if err != nil {
 		return errors.Wrap(err, "failed listing EnvoyFilters")
 	}
 
 	efs := make([]*istionetworking.EnvoyFilter, 0, len(allEfs.Items))
 	for i := range allEfs.Items {
-		if strings.HasPrefix(allEfs.Items[i].Name, config.Controller.EnvoyFilterNamePrefix) &&
-			reflect.DeepEqual(allEfs.Items[i].Spec.GetWorkloadSelector().GetLabels(), ap.Status.Ingress.Selector) {
+		if reflect.DeepEqual(allEfs.Items[i].Spec.GetWorkloadSelector().GetLabels(), ap.Status.Ingress.Selector) {
 			efs = append(efs, &allEfs.Items[i])
 		}
 	}

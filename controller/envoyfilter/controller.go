@@ -14,7 +14,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sort"
-	"strings"
 )
 
 type controller struct {
@@ -69,15 +68,16 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 
 func (c *controller) isDuplicate(ctx context.Context, ef *istionetworking.EnvoyFilter) (bool, error) {
 	allEfs := istionetworking.EnvoyFilterList{}
-	err := c.List(ctx, &allEfs, client.InNamespace(config.Controller.IstioRootNamespace))
+	err := c.List(ctx, &allEfs,
+		client.InNamespace(config.Controller.IstioRootNamespace),
+		client.MatchingLabels(config.Controller.EnvoyFilterLabels))
 	if err != nil {
 		return false, errors.Wrap(err, "failed listing EnvoyFilters")
 	}
 
 	efs := make([]*istionetworking.EnvoyFilter, 0, len(allEfs.Items))
 	for i := range allEfs.Items {
-		if strings.HasPrefix(allEfs.Items[i].Name, config.Controller.EnvoyFilterNamePrefix) &&
-			reflect.DeepEqual(allEfs.Items[i].Spec.GetWorkloadSelector().GetLabels(), ef.Spec.GetWorkloadSelector().GetLabels()) {
+		if reflect.DeepEqual(allEfs.Items[i].Spec.GetWorkloadSelector().GetLabels(), ef.Spec.GetWorkloadSelector().GetLabels()) {
 			efs = append(efs, &allEfs.Items[i])
 		}
 	}

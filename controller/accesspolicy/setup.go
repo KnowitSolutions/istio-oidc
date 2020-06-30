@@ -2,6 +2,8 @@ package accesspolicy
 
 import (
 	"istio-keycloak/api"
+	"istio-keycloak/config"
+	"istio-keycloak/controller/predicate"
 	"istio-keycloak/logging/errors"
 	"istio-keycloak/state"
 	istionetworking "istio.io/client-go/pkg/apis/networking/v1alpha3"
@@ -9,7 +11,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
@@ -45,7 +46,10 @@ func New(mgr ctrl.Manager, oidcComms state.OidcCommunicatorStore) error {
 		Watches(
 			&source.Kind{Type: &istionetworking.EnvoyFilter{}},
 			&handler.EnqueueRequestsFromMapFunc{ToRequests: newEnvoyFilterMapper(mgr)},
-			builder.WithPredicates(&predicate.GenerationChangedPredicate{})).
+			builder.WithPredicates(
+				&predicate.GenerationChangedPredicate{},
+				&predicate.InNamespace{Namespace: config.Controller.IstioRootNamespace},
+				&predicate.HasLabels{Labels: config.Controller.EnvoyFilterLabels})).
 		Complete(&c)
 	if err != nil {
 		return errors.Wrap(err, "failed making AccessPolicy controller")

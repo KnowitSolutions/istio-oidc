@@ -10,6 +10,7 @@ import (
 func newEnvoyFilter(ap *api.AccessPolicy) *istionetworking.EnvoyFilter {
 	ef := &istionetworking.EnvoyFilter{}
 	ef.Namespace = config.Controller.IstioRootNamespace
+	ef.Labels = config.Controller.EnvoyFilterLabels
 	ef.GenerateName = config.Controller.EnvoyFilterNamePrefix
 	ef.Spec.WorkloadSelector = &istionetworkingapi.WorkloadSelector{}
 	ef.Spec.WorkloadSelector.Labels = ap.Status.Ingress.Selector

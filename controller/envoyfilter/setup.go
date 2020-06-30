@@ -1,12 +1,15 @@
 package envoyfilter
 
 import (
+	"istio-keycloak/api"
 	"istio-keycloak/config"
+	"istio-keycloak/controller/predicate"
 	"istio-keycloak/logging/errors"
 	istionetworking "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 func New(mgr ctrl.Manager) error {
@@ -23,8 +26,12 @@ func New(mgr ctrl.Manager) error {
 			&istionetworking.EnvoyFilter{},
 			builder.WithPredicates(
 				&predicate.GenerationChangedPredicate{},
-				&inNamespace{Namespace: config.Controller.IstioRootNamespace},
-				&hasPrefix{Prefix: config.Controller.EnvoyFilterNamePrefix})).
+				&predicate.InNamespace{Namespace: config.Controller.IstioRootNamespace},
+				&predicate.HasLabels{Labels: config.Controller.EnvoyFilterLabels})).
+		Watches(
+			&source.Kind{Type: &api.AccessPolicy{}},
+			&handler.EnqueueRequestsFromMapFunc{ToRequests: &mapper{mgr.GetClient()}},
+			builder.WithPredicates(&predicate.GenerationChangedPredicate{})).
 		Complete(&c)
 	if err != nil {
 		return errors.Wrap(err, "failed making EnvoyFilter controller")
