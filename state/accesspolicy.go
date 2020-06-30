@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/gob"
+	"fmt"
 	"istio-keycloak/api"
 	"istio-keycloak/logging/errors"
 	core "k8s.io/api/core/v1"
@@ -51,7 +52,8 @@ type accessPolicyRoute api.AccessPolicyRoute
 
 func NewAccessPolicy(ap *api.AccessPolicy, secret *core.Secret) (*AccessPolicy, error) {
 	spec := accessPolicySpecStatus{ap.Spec, ap.Status}
-	return spec.convert(ap.Name, secret)
+	name := fmt.Sprintf("%s/%s", ap.Namespace, ap.Name)
+	return spec.convert(name, secret)
 }
 
 func (ap *accessPolicySpecStatus) normalize() {
