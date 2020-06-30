@@ -147,7 +147,8 @@ func (c *controller) reconcileAuth(ctx context.Context, ap *api.AccessPolicy) er
 
 		cfg, err := state.NewAccessPolicy(ap, &cred)
 		if err != nil {
-			return errors.Wrap(err, "invalid AccessPolicy")
+			log.FromContext(ctx).WithError(err).Error("Invalid AccessPolicy")
+			return nil
 		}
 
 		log.FromContext(ctx).Info("Updating OIDC settings")
