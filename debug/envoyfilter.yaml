@@ -11,7 +11,7 @@ spec:
     patch:
       operation: ADD
       value:
-        name: ext-authz
+        name: envoy-keycloak
         connect_timeout: 1s
         load_assignment:
           cluster_name: envoy-keycloak
