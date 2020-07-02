@@ -18,6 +18,8 @@ type ServerV2 struct {
 }
 
 func (srv *ServerV2) Check(ctx context.Context, req *auth.CheckRequest) (*auth.CheckResponse, error) {
+	ctx = tracingCtx(ctx)
+
 	proto := req.Attributes.Request.Http.Headers["x-forwarded-proto"]
 	host := req.Attributes.Request.Http.Host
 	path := req.Attributes.Request.Http.Path

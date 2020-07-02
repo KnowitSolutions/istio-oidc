@@ -22,7 +22,6 @@ import (
 )
 
 // TODO: Configurable forwarded headers (subject, roles, etc). Maybe use Jsonnet?
-// TODO: Forward tracing headers from gRPC when calling HTTP services
 func main() {
 	if terminal.IsTerminal(int(os.Stdout.Fd())) {
 		log.SetHandler(cli.Default)
