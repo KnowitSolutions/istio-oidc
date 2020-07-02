@@ -3,4 +3,4 @@ ExtAuthz:
   Timeout: 1h
 
 Keycloak:
-  URL: http://keycloak.localhost
+  URL: # TODO: Set Keycloak URL
