@@ -27,11 +27,15 @@ func (srv *ServerV2) Check(ctx context.Context, req *auth.CheckRequest) (*auth.C
 	cookies := req.Attributes.Request.Http.Headers["cookie"]
 	meta := req.Attributes.ContextExtensions
 	data, err := srv.newRequest(addr, cookies, meta)
+
+	var r *response
 	if err != nil {
 		log.WithError(err).Error("Unable to construct request object")
+		r = &response{status: http.StatusBadRequest}
+	} else {
+		r = srv.check(ctx, data)
 	}
 
-	r := srv.check(ctx, data)
 	res := &auth.CheckResponse{}
 	hs := make([]*core.HeaderValueOption, len(r.headers))
 

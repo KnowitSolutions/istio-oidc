@@ -21,38 +21,35 @@ type stateClaims struct {
 func (srv *Server) check(ctx context.Context, req *request) *response {
 	var res *response
 
-	if req == nil {
-		reqBadReqCount.Inc()
-		res = &response{status: http.StatusInternalServerError}
-	} else if req.oidc.IsCallback(req.url) {
-		reqCallbackCount.Inc()
+	if req.oidc.IsCallback(req.url) {
+		reqCallbackCount.WithLabelValues(req.accessPolicy).Inc()
 		res = srv.finishOidc(ctx, req)
 	} else if !srv.isAuthenticated(req) {
-		reqUnauthdCount.Inc()
+		reqUnauthdCount.WithLabelValues(req.accessPolicy).Inc()
 		res = srv.startOidc(req)
 	} else if req.claims.isExpired() {
-		reqExpiredCount.Inc()
+		reqExpiredCount.WithLabelValues(req.accessPolicy).Inc()
 		res = srv.updateToken(ctx, req)
 	} else {
-		reqAuthdCount.Inc()
+		reqAuthdCount.WithLabelValues(req.accessPolicy).Inc()
 		res = srv.authorize(req)
 	}
 
 	switch res.status {
 	case http.StatusOK:
-		resAllowed.Inc()
+		resAllowedCount.WithLabelValues(req.accessPolicy).Inc()
 	case http.StatusSeeOther:
 		fallthrough
 	case http.StatusTemporaryRedirect:
-		resRedir.Inc()
+		resRedirCount.WithLabelValues(req.accessPolicy).Inc()
 	case http.StatusBadRequest:
-		resBadReq.Inc()
+		resBadReqCount.WithLabelValues(req.accessPolicy).Inc()
 	case http.StatusForbidden:
-		resDenied.Inc()
+		resDeniedCount.WithLabelValues(req.accessPolicy).Inc()
 	case http.StatusInternalServerError:
-		resError.Inc()
+		resErrorCount.WithLabelValues(req.accessPolicy).Inc()
 	default:
-		resOther.Inc()
+		resOtherCount.WithLabelValues(req.accessPolicy).Inc()
 	}
 
 	return res

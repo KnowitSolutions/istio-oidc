@@ -10,22 +10,21 @@ var (
 		Namespace: "auth",
 		Name:      "requests",
 		Help:      "Total number of authorization requests",
-	}, []string{"type"})
-	reqAuthdCount    = reqCount.WithLabelValues("authenticated")
-	reqUnauthdCount  = reqCount.WithLabelValues("unauthenticated")
-	reqCallbackCount = reqCount.WithLabelValues("callback")
-	reqExpiredCount  = reqCount.WithLabelValues("expired")
-	reqBadReqCount   = reqCount.WithLabelValues("bad-request")
+	}, []string{"policy", "type"})
+	reqAuthdCount    = reqCount.MustCurryWith(prometheus.Labels{"type": "authenticated"})
+	reqUnauthdCount  = reqCount.MustCurryWith(prometheus.Labels{"type": "unauthenticated"})
+	reqCallbackCount = reqCount.MustCurryWith(prometheus.Labels{"type": "callback"})
+	reqExpiredCount  = reqCount.MustCurryWith(prometheus.Labels{"type": "expired"})
 
 	resCount = promauto.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "auth",
 		Name:      "responses",
 		Help:      "Total number of authorization responses",
-	}, []string{"result"})
-	resAllowed = resCount.WithLabelValues("allowed")
-	resDenied  = resCount.WithLabelValues("denied")
-	resRedir   = resCount.WithLabelValues("redirected")
-	resBadReq  = resCount.WithLabelValues("bad-request")
-	resError   = resCount.WithLabelValues("error")
-	resOther   = resCount.WithLabelValues("other")
+	}, []string{"policy", "result"})
+	resAllowedCount = resCount.MustCurryWith(prometheus.Labels{"result": "allowed"})
+	resDeniedCount  = resCount.MustCurryWith(prometheus.Labels{"result": "denied"})
+	resRedirCount   = resCount.MustCurryWith(prometheus.Labels{"result": "redirected"})
+	resBadReqCount  = resCount.MustCurryWith(prometheus.Labels{"result": "bad-request"})
+	resErrorCount   = resCount.MustCurryWith(prometheus.Labels{"result": "error"})
+	resOtherCount   = resCount.MustCurryWith(prometheus.Labels{"result": "other"})
 )
