@@ -15,7 +15,7 @@ spec:
       roles:
         '*':
         - global
-        test:
+        jaeger:
         - local
     test:
       disableAccessPolicy: true
@@ -27,4 +27,4 @@ metadata:
   namespace: base
 data:
   clientID: amFlZ2Vy
-  clientSecret: NzQyYzYzZmMtMWVhZC00M2VhLTg3YzQtZmZkNGQ2YTE1NTBj
+  clientSecret: UmVnZW5lcmF0ZSBtZQ==

@@ -20,6 +20,6 @@ spec:
             - endpoint:
                 address:
                   socket_address:
-                    address: 10.170.1.152  # TODO: Change this to current IP when testing
+                    address: 10.170.1.193  # TODO: Change this to current IP when testing
                     port_value: 8080
         http2_protocol_options: {}

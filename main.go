@@ -22,7 +22,6 @@ import (
 )
 
 // TODO: Configurable forwarded headers (subject, roles, etc). Maybe use Jsonnet?
-// TODO: Test OIDC with internal .svc k8s address from /etc/hosts
 // TODO: Forward tracing headers from gRPC when calling HTTP services
 func main() {
 	if terminal.IsTerminal(int(os.Stdout.Fd())) {

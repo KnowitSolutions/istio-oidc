@@ -1,5 +1,6 @@
 ExtAuthz:
   ClusterName: envoy-keycloak
+  Timeout: 1h
 
 Keycloak:
   URL: http://keycloak.localhost

@@ -15,7 +15,6 @@ import (
 )
 
 type providerMetadata struct {
-	Issuer                string `json:"issuer"`
 	AuthorizationEndpoint string `json:"authorization_endpoint"`
 	TokenEndpoint         string `json:"token_endpoint"`
 	JWKsURI               string `json:"jwks_uri"`
@@ -68,12 +67,12 @@ func (oc *oidcCommunicatorImpl) OAuth2(url url.URL) *oauth2.Config {
 	return &oauth2.Config{
 		ClientID:     oc.cfg.ClientId,
 		ClientSecret: oc.cfg.ClientSecret,
-		Endpoint:     oauth2.Endpoint{
-			AuthURL:   oc.provider.AuthorizationEndpoint,
-			TokenURL:  oc.provider.TokenEndpoint,
+		Endpoint: oauth2.Endpoint{
+			AuthURL:  oc.provider.AuthorizationEndpoint,
+			TokenURL: oc.provider.TokenEndpoint,
 		},
 		RedirectURL: url.ResolveReference(&oc.cfg.Callback).String(),
-		Scopes: []string{"openid"},
+		Scopes:      []string{"openid"},
 	}
 }
 
@@ -86,14 +85,14 @@ func (oc *oidcCommunicatorImpl) ExtractTokens(ctx context.Context, tok *oauth2.T
 	}
 
 	at = &AccessToken{}
-	err = claims(tok.AccessToken, oc.provider.Issuer, oc.cfg.ClientId, jwks, at)
+	err = claims(tok.AccessToken, jwks, at)
 	if err != nil {
 		err = errors.Wrap(err, "unable to get access token claims")
 		return
 	}
 
 	idt = &IdToken{}
-	err = claims(tok.Extra("id_token").(string), oc.provider.Issuer, oc.cfg.ClientId, jwks, idt)
+	err = claims(tok.Extra("id_token").(string), jwks, idt)
 	if err != nil {
 		err = errors.Wrap(err, "unable to get ID token claims")
 		return
@@ -122,7 +121,7 @@ func doJsonRequest(ctx context.Context, url string, data interface{}) error {
 	return nil
 }
 
-func claims(tok, iss, aud string, jwks *jose.JSONWebKeySet, claims interface{}) error {
+func claims(tok string, jwks *jose.JSONWebKeySet, claims interface{}) error {
 	parsed, err := jwt.ParseSigned(tok)
 	if err != nil {
 		return errors.Wrap(err, "failed paring token", "token", tok)
@@ -134,11 +133,7 @@ func claims(tok, iss, aud string, jwks *jose.JSONWebKeySet, claims interface{}) 
 		return errors.Wrap(err, "failed deserializing default claims", "token", tok)
 	}
 
-	exp := jwt.Expected{
-		Issuer:   iss,
-		Audience: jwt.Audience{aud},
-		Time:     time.Now(),
-	}
+	exp := jwt.Expected{Time: time.Now()}
 	err = def.ValidateWithLeeway(exp, 0)
 	if err != nil {
 		return errors.Wrap(err, "failed validating token", "token", tok)
