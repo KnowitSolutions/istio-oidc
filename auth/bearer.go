@@ -3,13 +3,11 @@ package auth
 import (
 	"context"
 	"golang.org/x/oauth2"
-	"gopkg.in/square/go-jose.v2/jwt"
 	"istio-keycloak/logging/errors"
 )
 
 type bearerClaims struct {
-	expirable
-	jwt.Claims
+	claims
 	Roles []string `json:"rol"`
 }
 

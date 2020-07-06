@@ -7,20 +7,20 @@ import (
 	"time"
 )
 
-type expirable struct {
+type claims struct {
 	jwt.Claims
 }
 
-func (e *expirable) isExpired() bool {
+func (c *claims) isExpired() bool {
 	expect := jwt.Expected{Time: time.Now()}
-	err := e.ValidateWithLeeway(expect, 0)
+	err := c.ValidateWithLeeway(expect, 0)
 	return err != nil
 }
 
 func makeToken(key []byte, claims interface{}, expiry time.Time) (string, error) {
 	sk := jose.SigningKey{Algorithm: jose.HS512, Key: key}
-	signer, _ := jose.NewSigner(sk, nil)
-	tok := jwt.Signed(signer).Claims(claims)
+	sig, _ := jose.NewSigner(sk, nil)
+	tok := jwt.Signed(sig).Claims(claims)
 
 	if !expiry.IsZero() {
 		def := jwt.Claims{Expiry: jwt.NewNumericDate(expiry)}
