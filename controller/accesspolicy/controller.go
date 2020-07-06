@@ -24,7 +24,7 @@ const finalizer = "finalizer.istio-keycloak"
 type controller struct {
 	client.Client
 	*runtime.Scheme
-	state.OidcCommunicatorStore
+	state.AccessPolicyStore
 }
 
 func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) {
@@ -152,10 +152,10 @@ func (c *controller) reconcileAuth(ctx context.Context, ap *api.AccessPolicy) er
 		}
 
 		log.FromContext(ctx).Info("Updating OIDC settings")
-		c.UpdateOicd(ctx, cfg)
+		c.UpdateAccessPolicy(ctx, cfg)
 	} else {
 		log.FromContext(ctx).Info("Deleting OIDC settings")
-		c.DeleteOidc(ap.Name)
+		c.DeleteAccessPolicy(ap.Name)
 	}
 
 	return nil

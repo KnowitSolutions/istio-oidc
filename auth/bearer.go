@@ -15,7 +15,7 @@ type bearerClaims struct {
 }
 
 func makeBearerClaims(ctx context.Context, req *request, tok *oauth2.Token) (*bearerClaims, error) {
-	accTok, idTok, err := req.oidc.ExtractTokens(ctx, tok)
+	accTok, idTok, err := req.accessPolicyHelper.ExtractTokens(ctx, tok)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed making bearer claims")
 	}

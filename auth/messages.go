@@ -14,9 +14,9 @@ type request struct {
 	url     url.URL
 	cookies []*http.Cookie
 
-	accessPolicy string
-	oidc         state.OidcCommunicator
-	session      *state.Session
+	accessPolicy       string
+	accessPolicyHelper state.AccessPolicyHelper
+	session            state.Session
 
 	roles  state.Roles
 	claims bearerClaims
@@ -66,6 +66,6 @@ func (req *request) Fields() log.Fields {
 		"AccessPolicy": req.accessPolicy,
 		"url":          loc.String(),
 		"bearer":       bearer,
-		"session":      req.session != nil,
+		"session":      !req.session.Expiry.IsZero(),
 	}
 }

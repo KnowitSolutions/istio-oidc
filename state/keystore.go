@@ -11,22 +11,22 @@ type KeyStore interface {
 	MakeKey() ([]byte, error)
 }
 
-type keyStoreImpl struct {
+type keyStore struct {
 	key []byte
 	mu  sync.RWMutex
 }
 
 func NewKeyStore() KeyStore {
-	return &keyStoreImpl{}
+	return &keyStore{}
 }
 
-func (ks *keyStoreImpl) GetKey() []byte {
+func (ks *keyStore) GetKey() []byte {
 	ks.mu.RLock()
 	defer ks.mu.RUnlock()
 	return ks.key
 }
 
-func (ks *keyStoreImpl) MakeKey() ([]byte, error) {
+func (ks *keyStore) MakeKey() ([]byte, error) {
 	ks.mu.Lock()
 	defer ks.mu.Unlock()
 

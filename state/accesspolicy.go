@@ -22,13 +22,13 @@ const (
 type AccessPolicy struct {
 	Name         string
 	Realm        string
-	OIDC         OIDC
+	Oidc         Oidc
 	VirtualHosts []string
 	Global       Route
 	Routes       Routes
 }
 
-type OIDC struct {
+type Oidc struct {
 	ClientId     string
 	ClientSecret string
 	Callback     url.URL
@@ -84,7 +84,7 @@ func (ap *accessPolicySpecStatus) convert(name string, secret *core.Secret) (*Ac
 	return &AccessPolicy{
 		Name:         name,
 		Realm:        ap.spec.Realm,
-		OIDC:         oidcCfg,
+		Oidc:         oidcCfg,
 		VirtualHosts: ap.status.VirtualHosts,
 		Global:       global.convert(ap.spec.GlobalRolesKey),
 		Routes:       routes,
@@ -103,12 +103,12 @@ func (apo *accessPolicyOIDC) normalize() {
 	}
 }
 
-func (apo *accessPolicyOIDC) convert(secret *core.Secret) (OIDC, error) {
+func (apo *accessPolicyOIDC) convert(secret *core.Secret) (Oidc, error) {
 	apo.normalize()
 
 	cb, err := url.Parse(apo.CallbackPath)
 	if err != nil {
-		return OIDC{}, err
+		return Oidc{}, err
 	}
 
 	var clientId, clientSecret string
@@ -117,14 +117,14 @@ func (apo *accessPolicyOIDC) convert(secret *core.Secret) (OIDC, error) {
 		clientSecretBytes, ok2 := secret.Data[apo.CredentialsSecret.ClientSecretKey]
 
 		if !ok1 || !ok2 {
-			return OIDC{}, errors.New("failed extracting client ID and secret")
+			return Oidc{}, errors.New("failed extracting client ID and secret")
 		} else {
 			clientId = string(clientIdBytes)
 			clientSecret = string(clientSecretBytes)
 		}
 	}
 
-	return OIDC{
+	return Oidc{
 		ClientId:     clientId,
 		ClientSecret: clientSecret,
 		Callback:     *cb,

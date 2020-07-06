@@ -9,7 +9,7 @@ import (
 
 type Server struct {
 	state.KeyStore
-	state.OidcCommunicatorStore
+	state.AccessPolicyStore
 	state.SessionStore
 }
 
@@ -27,13 +27,13 @@ func (srv *Server) newRequest(address, cookies string, metadata map[string]strin
 		return nil, errors.Wrap(err, "unable to parse address", "address", address)
 	}
 
-	oidc, ok := srv.GetOidc(metadata[state.AccessPolicyKey])
-	if !ok {
+	helper := srv.GetAccessPolicyHelper(metadata[state.AccessPolicyKey])
+	if helper == (state.AccessPolicyHelper{}) {
 		return nil, errors.New("unknown accessPolicy", "AccessPolicy", metadata[state.AccessPolicyKey])
 	}
 
 	roles := &state.Roles{}
-	if _, ok = metadata[state.RolesKey]; ok {
+	if _, ok := metadata[state.RolesKey]; ok {
 		err = roles.Decode(metadata[state.RolesKey])
 		if err != nil {
 			return nil, errors.Wrap(err, "unable to decode roles")
@@ -44,10 +44,10 @@ func (srv *Server) newRequest(address, cookies string, metadata map[string]strin
 	req.Header.Add("Cookie", cookies)
 
 	return &request{
-		url:          *parsed,
-		cookies:      req.Cookies(),
-		accessPolicy: metadata[state.AccessPolicyKey],
-		oidc:         oidc,
-		roles:        *roles,
+		url:                *parsed,
+		cookies:            req.Cookies(),
+		accessPolicy:       metadata[state.AccessPolicyKey],
+		accessPolicyHelper: helper,
+		roles:              *roles,
 	}, nil
 }

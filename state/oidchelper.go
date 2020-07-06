@@ -2,10 +2,10 @@ package state
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"golang.org/x/oauth2"
 	"gopkg.in/square/go-jose.v2"
-	"gopkg.in/square/go-jose.v2/json"
 	"gopkg.in/square/go-jose.v2/jwt"
 	"istio-keycloak/config"
 	"istio-keycloak/logging/errors"
@@ -13,6 +13,17 @@ import (
 	"net/url"
 	"time"
 )
+
+type OidcHelper interface {
+	IsCallback(url url.URL) bool
+	OAuth2(url url.URL) *oauth2.Config
+	ExtractTokens(ctx context.Context, tok *oauth2.Token) (at *AccessToken, idt *IdToken, err error)
+}
+
+type oidcHelper struct {
+	cfg      Oidc
+	provider providerMetadata
+}
 
 type providerMetadata struct {
 	AuthorizationEndpoint string `json:"authorization_endpoint"`
@@ -33,18 +44,7 @@ type IdToken struct {
 	Subject string `json:"sub"`
 }
 
-type OidcCommunicator interface {
-	IsCallback(url.URL) bool
-	OAuth2(url.URL) *oauth2.Config
-	ExtractTokens(context.Context, *oauth2.Token) (*AccessToken, *IdToken, error)
-}
-
-type oidcCommunicatorImpl struct {
-	cfg      OIDC
-	provider providerMetadata
-}
-
-func newOIDCCommunicator(ctx context.Context, cfg *AccessPolicy) (OidcCommunicator, error) {
+func newOidcHelper(ctx context.Context, cfg *AccessPolicy) (OidcHelper, error) {
 	iss := fmt.Sprintf("%s/auth/realms/%s", config.Keycloak.Url, cfg.Realm)
 	addr := iss + "/.well-known/openid-configuration"
 	prov := providerMetadata{}
@@ -53,17 +53,17 @@ func newOIDCCommunicator(ctx context.Context, cfg *AccessPolicy) (OidcCommunicat
 		return nil, errors.Wrap(err, "unable to fetch OIDC provider config", "issuer", iss)
 	}
 
-	return &oidcCommunicatorImpl{
-		cfg:      cfg.OIDC,
+	return &oidcHelper{
+		cfg:      cfg.Oidc,
 		provider: prov,
 	}, nil
 }
 
-func (oc *oidcCommunicatorImpl) IsCallback(url url.URL) bool {
+func (oc *oidcHelper) IsCallback(url url.URL) bool {
 	return url.Path == oc.cfg.Callback.Path
 }
 
-func (oc *oidcCommunicatorImpl) OAuth2(url url.URL) *oauth2.Config {
+func (oc *oidcHelper) OAuth2(url url.URL) *oauth2.Config {
 	return &oauth2.Config{
 		ClientID:     oc.cfg.ClientId,
 		ClientSecret: oc.cfg.ClientSecret,
@@ -76,7 +76,7 @@ func (oc *oidcCommunicatorImpl) OAuth2(url url.URL) *oauth2.Config {
 	}
 }
 
-func (oc *oidcCommunicatorImpl) ExtractTokens(ctx context.Context, tok *oauth2.Token) (at *AccessToken, idt *IdToken, err error) {
+func (oc *oidcHelper) ExtractTokens(ctx context.Context, tok *oauth2.Token) (at *AccessToken, idt *IdToken, err error) {
 	jwks := &jose.JSONWebKeySet{}
 	err = doJsonRequest(ctx, oc.provider.JWKsURI, jwks)
 	if err != nil {
@@ -124,7 +124,7 @@ func doJsonRequest(ctx context.Context, url string, data interface{}) error {
 func claims(tok string, jwks *jose.JSONWebKeySet, claims interface{}) error {
 	parsed, err := jwt.ParseSigned(tok)
 	if err != nil {
-		return errors.Wrap(err, "failed paring token", "token", tok)
+		return errors.Wrap(err, "failed parsing token", "token", tok)
 	}
 
 	def := &jwt.Claims{}

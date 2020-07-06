@@ -3,34 +3,39 @@ package state
 import (
 	"crypto/sha512"
 	"github.com/apex/log"
-	"golang.org/x/oauth2"
 	"istio-keycloak/config"
 	"sync"
 	"time"
 )
 
-type SessionStore interface {
-	Start()
-	GetSession(string) (*Session, bool)
-	SetSession(string, *oauth2.Token)
+type Session struct {
+	Headers      Headers
+	RefreshToken string
+	Expiry       time.Time
 }
 
-type sessionStoreImpl struct {
-	store map[[sha512.Size]byte]*Session
+type SessionStore interface {
+	Start()
+	GetSession(string) (Session, bool)
+	SetSession(string, Session)
+}
+
+type sessionStore struct {
+	store map[[sha512.Size]byte]Session
 	mu    sync.RWMutex
 }
 
 func NewSessionStore() SessionStore {
-	return &sessionStoreImpl{
-		store: map[[sha512.Size]byte]*Session{},
+	return &sessionStore{
+		store: map[[sha512.Size]byte]Session{},
 	}
 }
 
-func (ss *sessionStoreImpl) Start() {
+func (ss *sessionStore) Start() {
 	go ss.sessionCleaner()
 }
 
-func (ss *sessionStoreImpl) GetSession(token string) (*Session, bool) {
+func (ss *sessionStore) GetSession(token string) (Session, bool) {
 	ss.mu.RLock()
 	defer ss.mu.RUnlock()
 
@@ -39,18 +44,15 @@ func (ss *sessionStoreImpl) GetSession(token string) (*Session, bool) {
 	return session, ok
 }
 
-func (ss *sessionStoreImpl) SetSession(token string, data *oauth2.Token) {
+func (ss *sessionStore) SetSession(token string, session Session) {
 	ss.mu.Lock()
 	defer ss.mu.Unlock()
 
 	hash := sha512.Sum512([]byte(token))
-	ss.store[hash] = &Session{
-		RefreshToken: data.RefreshToken,
-		Expiry:       data.Expiry,
-	}
+	ss.store[hash] = session
 }
 
-func (ss *sessionStoreImpl) sessionCleaner() {
+func (ss *sessionStore) sessionCleaner() {
 	tick := time.NewTicker(config.Sessions.CleaningInterval)
 
 	for {

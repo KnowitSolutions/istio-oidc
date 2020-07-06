@@ -21,7 +21,7 @@ type stateClaims struct {
 func (srv *Server) check(ctx context.Context, req *request) *response {
 	var res *response
 
-	if req.oidc.IsCallback(req.url) {
+	if req.accessPolicyHelper.IsCallback(req.url) {
 		reqCallbackCount.WithLabelValues(req.accessPolicy).Inc()
 		res = srv.finishOidc(ctx, req)
 	} else if !srv.isAuthenticated(req) {
@@ -82,7 +82,7 @@ func (srv *Server) startOidc(req *request) *response {
 		return &response{status: http.StatusInternalServerError}
 	}
 
-	cfg := req.oidc.OAuth2(req.url)
+	cfg := req.accessPolicyHelper.OAuth2(req.url)
 	loc := cfg.AuthCodeURL(tok)
 
 	headers := map[string]string{"location": loc}
@@ -106,7 +106,7 @@ func (srv *Server) finishOidc(ctx context.Context, req *request) *response {
 		return &response{status: http.StatusBadRequest}
 	}
 
-	cfg := req.oidc.OAuth2(req.url)
+	cfg := req.accessPolicyHelper.OAuth2(req.url)
 	tok, err := cfg.Exchange(ctx, query["code"][0])
 	if err != nil {
 		err = errors.Wrap(err, "failed authorization code exchange")
@@ -124,7 +124,7 @@ func (srv *Server) finishOidc(ctx context.Context, req *request) *response {
 func (srv *Server) updateToken(ctx context.Context, req *request) *response {
 	log.WithFields(req).Info("Updating JWT")
 
-	cfg := req.oidc.OAuth2(req.url)
+	cfg := req.accessPolicyHelper.OAuth2(req.url)
 	src := cfg.TokenSource(ctx, &oauth2.Token{RefreshToken: req.session.RefreshToken})
 
 	tok, err := src.Token()
@@ -150,7 +150,13 @@ func (srv *Server) setToken(ctx context.Context, req *request, token *oauth2.Tok
 		return &response{status: http.StatusInternalServerError}
 	}
 
-	srv.SetSession(tok, token)
+	sess, err := req.accessPolicyHelper.CreateSession(token)
+	if err != nil {
+		log.WithFields(req).WithError(err).Error("Unable to set access token")
+		return &response{status: http.StatusInternalServerError}
+	}
+
+	srv.SetSession(tok, sess)
 	// TODO: Gossip
 
 	cookie := http.Cookie{

@@ -14,7 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-func New(mgr ctrl.Manager, oidcComms state.OidcCommunicatorStore) error {
+func New(mgr ctrl.Manager, apStore state.AccessPolicyStore) error {
 	scheme := mgr.GetScheme()
 	err := core.AddToScheme(scheme)
 	if err != nil {
@@ -29,7 +29,7 @@ func New(mgr ctrl.Manager, oidcComms state.OidcCommunicatorStore) error {
 		return errors.Wrap(err, "failed making AccessPolicy controller")
 	}
 
-	c := controller{mgr.GetClient(), mgr.GetScheme(), oidcComms}
+	c := controller{mgr.GetClient(), mgr.GetScheme(), apStore}
 	err = builder.
 		ControllerManagedBy(mgr).
 		For(

@@ -7,8 +7,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-func Register(mgr ctrl.Manager, oidcCommStore state.OidcCommunicatorStore) error {
-	err := accesspolicy.New(mgr, oidcCommStore)
+func Register(mgr ctrl.Manager, apStore state.AccessPolicyStore) error {
+	err := accesspolicy.New(mgr, apStore)
 	if err != nil {
 		return err
 	}

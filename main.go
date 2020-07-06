@@ -21,7 +21,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-// TODO: Configurable forwarded headers (subject, roles, etc). Maybe use Jsonnet?
 func main() {
 	if terminal.IsTerminal(int(os.Stdout.Fd())) {
 		log.SetHandler(cli.Default)
@@ -39,15 +38,15 @@ func main() {
 		log.WithError(err).Fatal("Unable to generate cryptographic key")
 	}
 
-	oidcCommStore := state.NewOidcCommunicatorStore()
+	apStore := state.NewAccessPolicyStore()
 
-	go startCtrl(oidcCommStore)
-	go startGrpc(keyStore, oidcCommStore)
+	go startCtrl(apStore)
+	go startGrpc(keyStore, apStore)
 	go startTelemetry()
 	select {}
 }
 
-func startCtrl(oidcCommStore state.OidcCommunicatorStore) {
+func startCtrl(apStore state.AccessPolicyStore) {
 	ctrl.SetLogger(logging.Log)
 
 	cfg, err := ctrl.GetConfig()
@@ -66,7 +65,7 @@ func startCtrl(oidcCommStore state.OidcCommunicatorStore) {
 		log.WithError(err).Fatal("Unable to create manager")
 	}
 
-	err = controller.Register(mgr, oidcCommStore)
+	err = controller.Register(mgr, apStore)
 	if err != nil {
 		log.WithError(err).Fatal("Unable to register controllers")
 	}
@@ -77,7 +76,7 @@ func startCtrl(oidcCommStore state.OidcCommunicatorStore) {
 	}
 }
 
-func startGrpc(keyStore state.KeyStore, oidcCommStore state.OidcCommunicatorStore) {
+func startGrpc(keyStore state.KeyStore, apStore state.AccessPolicyStore) {
 	lis, err := net.Listen("tcp", config.Service.Address)
 	if err != nil {
 		log.WithError(err).WithField("address", config.Service.Address).
@@ -85,7 +84,7 @@ func startGrpc(keyStore state.KeyStore, oidcCommStore state.OidcCommunicatorStor
 	}
 
 	srv := grpc.NewServer()
-	startExtAuthz(srv, keyStore, oidcCommStore)
+	startExtAuthz(srv, keyStore, apStore)
 
 	err = srv.Serve(lis)
 	if err != nil {
@@ -93,11 +92,11 @@ func startGrpc(keyStore state.KeyStore, oidcCommStore state.OidcCommunicatorStor
 	}
 }
 
-func startExtAuthz(srv *grpc.Server, keyStore state.KeyStore, oidcCommStore state.OidcCommunicatorStore) {
+func startExtAuthz(srv *grpc.Server, keyStore state.KeyStore, apStore state.AccessPolicyStore) {
 	extAuth := auth.Server{
-		KeyStore:              keyStore,
-		OidcCommunicatorStore: oidcCommStore,
-		SessionStore:          state.NewSessionStore(),
+		KeyStore:          keyStore,
+		AccessPolicyStore: apStore,
+		SessionStore:      state.NewSessionStore(),
 	}
 	extAuth.Start()
 
