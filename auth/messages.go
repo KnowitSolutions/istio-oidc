@@ -4,6 +4,7 @@ import (
 	"github.com/apex/log"
 	"gopkg.in/square/go-jose.v2"
 	"istio-keycloak/state"
+	"istio-keycloak/state/accesspolicy"
 	"net/http"
 	"net/url"
 )
@@ -13,13 +14,11 @@ const bearerCookie = "bearer"
 type request struct {
 	url     url.URL
 	cookies []*http.Cookie
+	claims  bearerClaims
 
-	accessPolicy       string
-	accessPolicyHelper state.AccessPolicyHelper
-	session            state.Session
-
-	roles  state.Roles
-	claims bearerClaims
+	policy  *accesspolicy.AccessPolicy
+	route   *accesspolicy.Route
+	session *state.Session
 }
 
 type response struct {
@@ -63,9 +62,9 @@ func (req *request) Fields() log.Fields {
 	}
 
 	return log.Fields{
-		"AccessPolicy": req.accessPolicy,
+		"AccessPolicy": req.policy.Name,
 		"url":          loc.String(),
 		"bearer":       bearer,
-		"session":      !req.session.Expiry.IsZero(),
+		"session":      req.session != nil,
 	}
 }

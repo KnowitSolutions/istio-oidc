@@ -8,6 +8,7 @@ import (
 	"istio-keycloak/config"
 	"istio-keycloak/logging/errors"
 	"istio-keycloak/state"
+	"istio-keycloak/state/accesspolicy"
 	istionetworking "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	core "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -145,7 +146,7 @@ func (c *controller) reconcileAuth(ctx context.Context, ap *api.AccessPolicy) er
 			return errors.Wrap(err, "failed getting credentials Secret")
 		}
 
-		cfg, err := state.NewAccessPolicy(ap, &cred)
+		cfg, err := accesspolicy.NewAccessPolicy(ap, &cred)
 		if err != nil {
 			log.FromContext(ctx).WithError(err).Error("Invalid AccessPolicy")
 			return nil

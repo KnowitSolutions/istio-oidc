@@ -1,45 +1,12 @@
-package state
+package accesspolicy
 
 import (
-	"bytes"
-	"encoding/base64"
-	"encoding/gob"
 	"fmt"
 	"istio-keycloak/api"
 	"istio-keycloak/logging/errors"
 	core "k8s.io/api/core/v1"
 	"net/url"
-	"strings"
 )
-
-const (
-	AccessPolicyKey = "policy"
-	RolesKey        = "roles"
-)
-
-type AccessPolicy struct {
-	Name         string
-	Realm        string
-	Oidc         Oidc
-	Default      Route
-	Routes       Routes
-	VirtualHosts []string
-}
-
-type Oidc struct {
-	ClientId     string
-	ClientSecret string
-	Callback     url.URL
-}
-
-type Routes map[string]Route
-
-type Route struct {
-	EnableAuthz bool
-	Roles       Roles
-}
-
-type Roles []string
 
 type accessPolicySpecStatus struct {
 	spec   api.AccessPolicySpec
@@ -47,6 +14,9 @@ type accessPolicySpecStatus struct {
 }
 type accessPolicyOIDC api.AccessPolicyOIDC
 type accessPolicyRoute api.AccessPolicyRoute
+type accessPolicyRoles [][]string
+type accessPolicyRouteHeaders []api.AccessPolicyRouteHeader
+type accessPolicyRouteHeader api.AccessPolicyRouteHeader
 
 func NewAccessPolicy(ap *api.AccessPolicy, secret *core.Secret) (*AccessPolicy, error) {
 	spec := accessPolicySpecStatus{ap.Spec, ap.Status}
@@ -124,24 +94,38 @@ func (apo *accessPolicyOIDC) convert(secret *core.Secret) (Oidc, error) {
 }
 
 func (apr *accessPolicyRoute) convert() Route {
+	roles := accessPolicyRoles(apr.Roles)
+	headers := accessPolicyRouteHeaders(apr.Headers)
+
 	return Route{
 		EnableAuthz: !apr.DisableAccessPolicy,
-		Roles:       apr.Roles,
+		Roles:       roles.convert(),
+		Headers:     headers.convert(),
 	}
 }
-
-func (r *Roles) Encode() (string, error) {
-	buf := bytes.NewBuffer(nil)
-	b64 := base64.NewEncoder(base64.StdEncoding, buf)
-	enc := gob.NewEncoder(b64)
-	err := enc.Encode(r)
-	_ = b64.Close()
-	return buf.String(), err
+func (apr *accessPolicyRoles) convert() RoleSet {
+	roles := make(RoleSet, len(*apr))
+	for i := range *apr {
+		roles[i] = (*apr)[i]
+	}
+	return roles
 }
 
-func (r *Roles) Decode(str string) error {
-	buf := strings.NewReader(str)
-	b64 := base64.NewDecoder(base64.StdEncoding, buf)
-	dec := gob.NewDecoder(b64)
-	return errors.Wrap(dec.Decode(r), "unable to decode roles")
+func (aprh *accessPolicyRouteHeaders) convert() Headers {
+	headers := make(Headers, len(*aprh))
+	for i, header := range *aprh {
+		header := accessPolicyRouteHeader(header)
+		headers[i] = header.convert()
+	}
+	return headers
+}
+
+func (aprh *accessPolicyRouteHeader) convert() Header {
+	roles := accessPolicyRoles(aprh.Roles)
+
+	return Header{
+		Name:  aprh.Name,
+		Value: aprh.Value,
+		Roles: roles.convert(),
+	}
 }

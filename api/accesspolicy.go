@@ -57,9 +57,19 @@ type AccessPolicyRoute struct {
 	// +kubebuilder:validation:Optional
 	Name string `json:"name,omitempty"`
 	// +kubebuilder:validation:Optional
-	Roles []string `json:"roles,omitempty"`
+	Roles [][]string `json:"roles,omitempty"`
+	// +kubebuilder:validation:Optional
+	Headers []AccessPolicyRouteHeader `json:"headers,omitempty"`
 	// +kubebuilder:validation:Optional
 	DisableAccessPolicy bool `json:"disableAccessPolicy,omitempty"`
+}
+
+// +kubebuilder:object:generate=true
+type AccessPolicyRouteHeader struct {
+	Name string `json:"name"`
+	// +kubebuilder:validation:Optional
+	Value string     `json:"value"`
+	Roles [][]string `json:"roles"`
 }
 
 // +kubebuilder:object:generate=true

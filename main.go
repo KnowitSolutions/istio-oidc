@@ -21,6 +21,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
+// TODO: Switch to context logging
 func main() {
 	if terminal.IsTerminal(int(os.Stdout.Fd())) {
 		log.SetHandler(cli.Default)

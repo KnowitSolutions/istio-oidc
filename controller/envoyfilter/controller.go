@@ -7,7 +7,7 @@ import (
 	"istio-keycloak/api"
 	"istio-keycloak/config"
 	"istio-keycloak/logging/errors"
-	"istio-keycloak/state"
+	"istio-keycloak/state/accesspolicy"
 	istionetworking "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"reflect"
@@ -58,11 +58,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 			Info("Including AccessPolicy in EnvoyFilter")
 	}
 
-	err = newEnvoyFilter(&ef, aps)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-
+	newEnvoyFilter(&ef, aps)
 	log.FromContext(ctx).Info("Updating resource")
 	err = c.Update(ctx, &ef)
 	if err != nil {
@@ -97,17 +93,17 @@ func (c *controller) isDuplicate(ctx context.Context, ef *istionetworking.EnvoyF
 	return ef.Name != efs[0].Name, nil
 }
 
-func (c *controller) fetchAccessPolicies(ctx context.Context, ef *istionetworking.EnvoyFilter) ([]*state.AccessPolicy, error) {
+func (c *controller) fetchAccessPolicies(ctx context.Context, ef *istionetworking.EnvoyFilter) ([]*accesspolicy.AccessPolicy, error) {
 	allAps := api.AccessPolicyList{}
 	err := c.List(ctx, &allAps)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed listing AccessPolicies")
 	}
 
-	aps := make([]*state.AccessPolicy, 0, len(allAps.Items))
+	aps := make([]*accesspolicy.AccessPolicy, 0, len(allAps.Items))
 	for i := range allAps.Items {
 		if reflect.DeepEqual(allAps.Items[i].Status.GetIngress().GetSelector(), ef.Spec.GetWorkloadSelector().GetLabels()) {
-			ap, err := state.NewAccessPolicy(&allAps.Items[i], nil)
+			ap, err := accesspolicy.NewAccessPolicy(&allAps.Items[i], nil)
 			if err != nil {
 				log.FromContext(ctx).WithError(err).WithField("AccessPolicy", allAps.Items[i].Name).
 					Error("Invalid AccessPolicy")

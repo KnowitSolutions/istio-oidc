@@ -3,6 +3,7 @@ package auth
 import (
 	"istio-keycloak/logging/errors"
 	"istio-keycloak/state"
+	"istio-keycloak/state/accesspolicy"
 	"net/http"
 	"net/url"
 )
@@ -27,27 +28,25 @@ func (srv *Server) newRequest(address, cookies string, metadata map[string]strin
 		return nil, errors.Wrap(err, "unable to parse address", "address", address)
 	}
 
-	helper := srv.GetAccessPolicyHelper(metadata[state.AccessPolicyKey])
-	if helper == (state.AccessPolicyHelper{}) {
-		return nil, errors.New("unknown accessPolicy", "AccessPolicy", metadata[state.AccessPolicyKey])
+	ap := srv.GetAccessPolicy(metadata[accesspolicy.NameKey])
+	if ap == nil {
+		return nil, errors.New("unknown " + accesspolicy.NameKey, "AccessPolicy", metadata[accesspolicy.NameKey])
 	}
 
-	roles := &state.Roles{}
-	if _, ok := metadata[state.RolesKey]; ok {
-		err = roles.Decode(metadata[state.RolesKey])
-		if err != nil {
-			return nil, errors.Wrap(err, "unable to decode roles")
-		}
+	route, ok := ap.Routes[metadata[accesspolicy.RouteKey]]
+	if metadata[accesspolicy.RouteKey] == "" {
+		route = ap.Default
+	} else if !ok {
+		return nil, errors.New("unknown " + accesspolicy.RouteKey, "AccessPolicy", metadata[accesspolicy.NameKey])
 	}
 
 	req := http.Request{Header: http.Header{}}
 	req.Header.Add("Cookie", cookies)
 
 	return &request{
-		url:                *parsed,
-		cookies:            req.Cookies(),
-		accessPolicy:       metadata[state.AccessPolicyKey],
-		accessPolicyHelper: helper,
-		roles:              *roles,
+		url:     *parsed,
+		cookies: req.Cookies(),
+		policy:  ap,
+		route:   &route,
 	}, nil
 }

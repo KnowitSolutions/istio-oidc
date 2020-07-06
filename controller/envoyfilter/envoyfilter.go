@@ -3,13 +3,12 @@ package envoyfilter
 import (
 	"fmt"
 	"istio-keycloak/config"
-	"istio-keycloak/logging/errors"
-	"istio-keycloak/state"
+	"istio-keycloak/state/accesspolicy"
 	istionetworkingapi "istio.io/api/networking/v1alpha3"
 	istionetworking "istio.io/client-go/pkg/apis/networking/v1alpha3"
 )
 
-func newEnvoyFilter(ef *istionetworking.EnvoyFilter, pols []*state.AccessPolicy) error {
+func newEnvoyFilter(ef *istionetworking.EnvoyFilter, pols []*accesspolicy.AccessPolicy) {
 	count := 2
 	for _, pol := range pols {
 		count += len(pol.VirtualHosts) * len(pol.Routes)
@@ -27,7 +26,7 @@ func newEnvoyFilter(ef *istionetworking.EnvoyFilter, pols []*state.AccessPolicy)
 	applyToVirtualHost(extAuthzDisable)
 	matchGateway(extAuthzDisable)
 	merge(extAuthzDisable)
-	_ = extAuthzPerRoute(extAuthzDisable, "", nil)
+	extAuthzPerRoute(extAuthzDisable, "", "", nil)
 	ef.Spec.ConfigPatches = append(ef.Spec.ConfigPatches, extAuthzDisable)
 
 	for _, pol := range pols {
@@ -36,10 +35,7 @@ func newEnvoyFilter(ef *istionetworking.EnvoyFilter, pols []*state.AccessPolicy)
 			applyToVirtualHost(patch)
 			matchVirtualHost(patch, vhost)
 			merge(patch)
-			err := extAuthzPerRoute(patch, pol.Name, &pol.Default)
-			if err != nil {
-				return err
-			}
+			extAuthzPerRoute(patch, pol.Name, "", &pol.Default)
 
 			ef.Spec.ConfigPatches = append(ef.Spec.ConfigPatches, patch)
 
@@ -48,17 +44,12 @@ func newEnvoyFilter(ef *istionetworking.EnvoyFilter, pols []*state.AccessPolicy)
 				applyToHttpRoute(patch)
 				matchVirtualHostRoute(patch, vhost, route)
 				merge(patch)
-				err = extAuthzPerRoute(patch, pol.Name, &routeData)
-				if err != nil {
-					return err
-				}
+				extAuthzPerRoute(patch, pol.Name, route, &routeData)
 
 				ef.Spec.ConfigPatches = append(ef.Spec.ConfigPatches, patch)
 			}
 		}
 	}
-
-	return nil
 }
 
 func extAuthz(patch *istionetworkingapi.EnvoyFilter_EnvoyConfigObjectPatch) {
@@ -76,26 +67,18 @@ func extAuthz(patch *istionetworkingapi.EnvoyFilter_EnvoyConfigObjectPatch) {
 	})
 }
 
-func extAuthzPerRoute(patch *istionetworkingapi.EnvoyFilter_EnvoyConfigObjectPatch, policy string, route *state.Route) error {
+func extAuthzPerRoute(patch *istionetworkingapi.EnvoyFilter_EnvoyConfigObjectPatch, policy, route string, routeData *accesspolicy.Route) {
 	cfg := map[string]interface{}{
 		"@type": "type.googleapis.com/envoy.config.filter.http.ext_authz.v2.ExtAuthzPerRoute",
 	}
 
-	if route != nil && route.EnableAuthz {
-		roles, err := route.Roles.Encode()
-		if err != nil {
-			return errors.Wrap(err, "failed to construct EnvoyFilter")
+	if routeData != nil && routeData.EnableAuthz {
+		cfg["check_settings"] = map[string]interface{}{
+			"context_extensions": map[string]interface{}{
+				accesspolicy.NameKey:  policy,
+				accesspolicy.RouteKey: route,
+			},
 		}
-
-		exts := make(map[string]interface{}, 2)
-		if len(route.Roles) > 0 {
-			exts = map[string]interface{}{
-				state.AccessPolicyKey: policy,
-				state.RolesKey:        roles,
-			}
-		}
-
-		cfg["check_settings"] = map[string]interface{}{"context_extensions": exts}
 	} else {
 		cfg["disabled"] = true
 	}
@@ -105,8 +88,6 @@ func extAuthzPerRoute(patch *istionetworkingapi.EnvoyFilter_EnvoyConfigObjectPat
 			"envoy.filters.http.ext_authz": cfg,
 		},
 	})
-
-	return nil
 }
 
 func applyToHttpFilter(patch *istionetworkingapi.EnvoyFilter_EnvoyConfigObjectPatch) {

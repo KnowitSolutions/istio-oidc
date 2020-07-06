@@ -5,50 +5,54 @@ import (
 	"github.com/apex/log"
 	"golang.org/x/oauth2"
 	"istio-keycloak/logging/errors"
+	"istio-keycloak/state"
 	"net/http"
 	"strings"
 	"time"
 )
-
-const subjectHeader = "x-subject"
 
 type stateClaims struct {
 	claims
 	Path string `json:"path"`
 }
 
+type bearerClaims struct {
+	claims
+	Roles []string `json:"rol"`
+}
+
 func (srv *Server) check(ctx context.Context, req *request) *response {
 	var res *response
 
-	if req.accessPolicyHelper.IsCallback(req.url) {
-		reqCallbackCount.WithLabelValues(req.accessPolicy).Inc()
+	if req.policy.Oidc.IsCallback(req.url) {
+		reqCallbackCount.WithLabelValues(req.policy.Name).Inc()
 		res = srv.finishOidc(ctx, req)
 	} else if !srv.isAuthenticated(req) {
-		reqUnauthdCount.WithLabelValues(req.accessPolicy).Inc()
+		reqUnauthdCount.WithLabelValues(req.policy.Name).Inc()
 		res = srv.startOidc(req)
 	} else if req.claims.isExpired() {
-		reqExpiredCount.WithLabelValues(req.accessPolicy).Inc()
+		reqExpiredCount.WithLabelValues(req.policy.Name).Inc()
 		res = srv.updateToken(ctx, req)
 	} else {
-		reqAuthdCount.WithLabelValues(req.accessPolicy).Inc()
+		reqAuthdCount.WithLabelValues(req.policy.Name).Inc()
 		res = srv.authorize(req)
 	}
 
 	switch res.status {
 	case http.StatusOK:
-		resAllowedCount.WithLabelValues(req.accessPolicy).Inc()
+		resAllowedCount.WithLabelValues(req.policy.Name).Inc()
 	case http.StatusSeeOther:
 		fallthrough
 	case http.StatusTemporaryRedirect:
-		resRedirCount.WithLabelValues(req.accessPolicy).Inc()
+		resRedirCount.WithLabelValues(req.policy.Name).Inc()
 	case http.StatusBadRequest:
-		resBadReqCount.WithLabelValues(req.accessPolicy).Inc()
+		resBadReqCount.WithLabelValues(req.policy.Name).Inc()
 	case http.StatusForbidden:
-		resDeniedCount.WithLabelValues(req.accessPolicy).Inc()
+		resDeniedCount.WithLabelValues(req.policy.Name).Inc()
 	case http.StatusInternalServerError:
-		resErrorCount.WithLabelValues(req.accessPolicy).Inc()
+		resErrorCount.WithLabelValues(req.policy.Name).Inc()
 	default:
-		resOtherCount.WithLabelValues(req.accessPolicy).Inc()
+		resOtherCount.WithLabelValues(req.policy.Name).Inc()
 	}
 
 	return res
@@ -81,7 +85,7 @@ func (srv *Server) startOidc(req *request) *response {
 		return &response{status: http.StatusInternalServerError}
 	}
 
-	cfg := req.accessPolicyHelper.OAuth2(req.url)
+	cfg := req.policy.Oidc.OAuth2(req.url)
 	loc := cfg.AuthCodeURL(tok)
 
 	headers := map[string]string{"location": loc}
@@ -105,7 +109,7 @@ func (srv *Server) finishOidc(ctx context.Context, req *request) *response {
 		return &response{status: http.StatusBadRequest}
 	}
 
-	cfg := req.accessPolicyHelper.OAuth2(req.url)
+	cfg := req.policy.Oidc.OAuth2(req.url)
 	tok, err := cfg.Exchange(ctx, query["code"][0])
 	if err != nil {
 		err = errors.Wrap(err, "failed authorization code exchange")
@@ -123,7 +127,7 @@ func (srv *Server) finishOidc(ctx context.Context, req *request) *response {
 func (srv *Server) updateToken(ctx context.Context, req *request) *response {
 	log.WithFields(req).Info("Updating JWT")
 
-	cfg := req.accessPolicyHelper.OAuth2(req.url)
+	cfg := req.policy.Oidc.OAuth2(req.url)
 	src := cfg.TokenSource(ctx, &oauth2.Token{RefreshToken: req.session.RefreshToken})
 
 	tok, err := src.Token()
@@ -137,11 +141,15 @@ func (srv *Server) updateToken(ctx context.Context, req *request) *response {
 }
 
 func (srv *Server) setToken(ctx context.Context, req *request, token *oauth2.Token, uri string) *response {
-	claims, err := makeBearerClaims(ctx, req, token)
+	data, err := req.policy.Oidc.ExtractTokenData(ctx, token)
 	if err != nil {
 		log.WithFields(req).WithError(err).Error("Unable to set access token")
 		return &response{status: http.StatusInternalServerError}
 	}
+
+	claims := bearerClaims{}
+	claims.Subject = data.Subject
+	claims.Roles = data.Roles
 
 	tok, err := makeToken(srv.GetKey(), claims, token.Expiry)
 	if err != nil {
@@ -149,13 +157,10 @@ func (srv *Server) setToken(ctx context.Context, req *request, token *oauth2.Tok
 		return &response{status: http.StatusInternalServerError}
 	}
 
-	sess, err := req.accessPolicyHelper.CreateSession(token)
-	if err != nil {
-		log.WithFields(req).WithError(err).Error("Unable to set access token")
-		return &response{status: http.StatusInternalServerError}
-	}
-
-	srv.SetSession(tok, sess)
+	srv.SetSession(tok, &state.Session{
+		RefreshToken: token.RefreshToken,
+		Expiry:       token.Expiry,
+	})
 	// TODO: Gossip
 
 	cookie := http.Cookie{
@@ -180,30 +185,19 @@ func (srv *Server) setToken(ctx context.Context, req *request, token *oauth2.Tok
 func (srv *Server) authorize(req *request) *response {
 	log.WithFields(req).Info("Authorizing")
 
-	found := make(map[string]bool, len(req.roles))
-	for _, k := range req.roles {
-		found[k] = false
-	}
-	for _, k := range req.claims.Roles {
-		if _, ok := found[k]; ok {
-			found[k] = true
-		}
-	}
-
-	missing := make([]string, 0, len(found))
-	for k, v := range found {
-		if !v {
-			missing = append(missing, k)
-		}
-	}
-
-	if len(missing) == 0 {
-		log.WithFields(req).Info("Allowing request")
-		headers := map[string]string{subjectHeader: req.claims.Subject}
-		return &response{status: http.StatusOK, headers: headers}
-	} else {
-		log.WithField("missingRoles", strings.Join(missing, ",")).
-			WithFields(req).Info("Denying request")
+	if !hasRoles(req.route.Roles, req.claims.Roles) {
+		log.WithFields(req).Info("Denying request")
 		return &response{status: http.StatusForbidden}
+	} else {
+		log.WithFields(req).Info("Allowing request")
 	}
+
+	headers := make(map[string]string, len(req.route.Headers))
+	for _, header := range req.route.Headers {
+		if hasRoles(header.Roles, req.claims.Roles) {
+			headers[header.Name] = header.Value
+		}
+	}
+
+	return &response{status: http.StatusOK, headers: headers}
 }

@@ -9,15 +9,14 @@ import (
 )
 
 type Session struct {
-	Headers      Headers
 	RefreshToken string
 	Expiry       time.Time
 }
 
 type SessionStore interface {
 	Start()
-	GetSession(string) (Session, bool)
-	SetSession(string, Session)
+	GetSession(string) (*Session, bool)
+	SetSession(string, *Session)
 }
 
 type sessionStore struct {
@@ -35,21 +34,21 @@ func (ss *sessionStore) Start() {
 	go ss.sessionCleaner()
 }
 
-func (ss *sessionStore) GetSession(token string) (Session, bool) {
+func (ss *sessionStore) GetSession(token string) (*Session, bool) {
 	ss.mu.RLock()
 	defer ss.mu.RUnlock()
 
 	hash := sha512.Sum512([]byte(token))
 	session, ok := ss.store[hash]
-	return session, ok
+	return &session, ok
 }
 
-func (ss *sessionStore) SetSession(token string, session Session) {
+func (ss *sessionStore) SetSession(token string, session *Session) {
 	ss.mu.Lock()
 	defer ss.mu.Unlock()
 
 	hash := sha512.Sum512([]byte(token))
-	ss.store[hash] = session
+	ss.store[hash] = *session
 }
 
 func (ss *sessionStore) sessionCleaner() {

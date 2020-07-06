@@ -3,54 +3,45 @@ package state
 import (
 	"context"
 	"github.com/apex/log"
+	"istio-keycloak/state/accesspolicy"
 	"sync"
 )
 
-type AccessPolicyHelper struct {
-	OidcHelper
-	SessionCreator
-}
-
 type AccessPolicyStore interface {
-	GetAccessPolicyHelper(string) AccessPolicyHelper
-	UpdateAccessPolicy(context.Context, *AccessPolicy)
+	GetAccessPolicy(string) *accesspolicy.AccessPolicy
+	UpdateAccessPolicy(context.Context, *accesspolicy.AccessPolicy)
 	DeleteAccessPolicy(string)
 }
 
 type accessPolicyStore struct {
-	entries   map[string]AccessPolicyHelper
+	entries   map[string]*accesspolicy.AccessPolicy
 	entriesMu sync.RWMutex
 }
 
 func NewAccessPolicyStore() AccessPolicyStore {
 	return &accessPolicyStore{
-		entries: map[string]AccessPolicyHelper{},
+		entries: map[string]*accesspolicy.AccessPolicy{},
 	}
 }
 
-func (aps *accessPolicyStore) GetAccessPolicyHelper(name string) AccessPolicyHelper {
+func (aps *accessPolicyStore) GetAccessPolicy(name string) *accesspolicy.AccessPolicy {
 	aps.entriesMu.RLock()
 	defer aps.entriesMu.RUnlock()
 	return aps.entries[name]
 }
 
-func (aps *accessPolicyStore) UpdateAccessPolicy(ctx context.Context, pol *AccessPolicy) {
+func (aps *accessPolicyStore) UpdateAccessPolicy(ctx context.Context, pol *accesspolicy.AccessPolicy) {
 	go aps.updateAccessPolicy(ctx, pol)
 }
 
-func (aps *accessPolicyStore) updateAccessPolicy(ctx context.Context, pol *AccessPolicy) {
-	oidc, err := newOidcHelper(ctx, pol)
-	if err != nil {
-		log.WithError(err).Error("Error while loading access policy")
-	}
-
-	header, err := newSessionCreator(pol)
+func (aps *accessPolicyStore) updateAccessPolicy(ctx context.Context, pol *accesspolicy.AccessPolicy) {
+	err := pol.UpdateOidcProvider(ctx)
 	if err != nil {
 		log.WithError(err).Error("Error while loading access policy")
 	}
 
 	aps.entriesMu.Lock()
-	aps.entries[pol.Name] = AccessPolicyHelper{oidc, header}
+	aps.entries[pol.Name] = pol
 	aps.entriesMu.Unlock()
 
 	log.WithField("AccessPolicy", pol.Name).Info("Updated OIDC settings")
