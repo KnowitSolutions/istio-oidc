@@ -15,17 +15,15 @@ import (
 const (
 	AccessPolicyKey = "policy"
 	RolesKey        = "roles"
-	GlobalRouteKey  = "*"
-	GlobalRoleKey   = ""
 )
 
 type AccessPolicy struct {
 	Name         string
 	Realm        string
 	Oidc         Oidc
-	VirtualHosts []string
-	Global       Route
+	Default      Route
 	Routes       Routes
+	VirtualHosts []string
 }
 
 type Oidc struct {
@@ -41,7 +39,7 @@ type Route struct {
 	Roles       Roles
 }
 
-type Roles map[string][]string
+type Roles []string
 
 type accessPolicySpecStatus struct {
 	spec   api.AccessPolicySpec
@@ -56,23 +54,17 @@ func NewAccessPolicy(ap *api.AccessPolicy, secret *core.Secret) (*AccessPolicy, 
 	return spec.convert(name, secret)
 }
 
-func (ap *accessPolicySpecStatus) normalize() {
-	if ap.spec.GlobalRolesKey == "" {
-		ap.spec.GlobalRolesKey = "*"
-	}
-}
-
 func (ap *accessPolicySpecStatus) convert(name string, secret *core.Secret) (*AccessPolicy, error) {
-	ap.normalize()
-
 	oidc := accessPolicyOIDC(ap.spec.OIDC)
-	global := accessPolicyRoute(ap.spec.Routes[GlobalRouteKey])
 
+	var defRoute Route
 	routes := make(Routes, len(ap.spec.Routes)-1)
-	for k, route := range ap.spec.Routes {
-		if k != GlobalRouteKey {
-			route := accessPolicyRoute(route)
-			routes[k] = route.convert(ap.spec.GlobalRolesKey)
+	for _, route := range ap.spec.Routes {
+		route := accessPolicyRoute(route)
+		if route.Name == "" {
+			defRoute = route.convert()
+		} else {
+			routes[route.Name] = route.convert()
 		}
 	}
 
@@ -85,9 +77,9 @@ func (ap *accessPolicySpecStatus) convert(name string, secret *core.Secret) (*Ac
 		Name:         name,
 		Realm:        ap.spec.Realm,
 		Oidc:         oidcCfg,
-		VirtualHosts: ap.status.VirtualHosts,
-		Global:       global.convert(ap.spec.GlobalRolesKey),
+		Default:      defRoute,
 		Routes:       routes,
+		VirtualHosts: ap.status.VirtualHosts,
 	}, nil
 }
 
@@ -131,22 +123,7 @@ func (apo *accessPolicyOIDC) convert(secret *core.Secret) (Oidc, error) {
 	}, nil
 }
 
-func (apr *accessPolicyRoute) normalize(globalRolesKey string) {
-	if apr.Roles == nil {
-		return
-	}
-
-	global, ok := apr.Roles[globalRolesKey]
-	if !ok {
-		return
-	}
-
-	delete(apr.Roles, globalRolesKey)
-	apr.Roles[GlobalRoleKey] = global
-}
-
-func (apr *accessPolicyRoute) convert(globalRolesKey string) Route {
-	apr.normalize(globalRolesKey)
+func (apr *accessPolicyRoute) convert() Route {
 	return Route{
 		EnableAuthz: !apr.DisableAccessPolicy,
 		Roles:       apr.Roles,

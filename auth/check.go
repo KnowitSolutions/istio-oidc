@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	"fmt"
 	"github.com/apex/log"
 	"golang.org/x/oauth2"
 	"istio-keycloak/logging/errors"
@@ -181,42 +180,20 @@ func (srv *Server) setToken(ctx context.Context, req *request, token *oauth2.Tok
 func (srv *Server) authorize(req *request) *response {
 	log.WithFields(req).Info("Authorizing")
 
-	found := make(map[string]map[string]bool, len(req.roles))
-	tot := 0
-	for k1, v := range req.roles {
-		found[k1] = make(map[string]bool, len(v))
-		for _, k2 := range v {
-			found[k1][k2] = false
-			tot++
+	found := make(map[string]bool, len(req.roles))
+	for _, k := range req.roles {
+		found[k] = false
+	}
+	for _, k := range req.claims.Roles {
+		if _, ok := found[k]; ok {
+			found[k] = true
 		}
 	}
 
-	for k1, v := range req.claims.Roles {
-		if _, ok := found[k1]; !ok {
-			continue
-		}
-
-		for _, k2 := range v {
-			if _, ok := found[k1][k2]; !ok {
-				continue
-			}
-
-			found[k1][k2] = true
-		}
-	}
-
-	missing := make([]string, 0, tot)
-	for k1, v1 := range found {
-		for k2, v2 := range v1 {
-			if !v2 {
-				var str string
-				if k1 == "" {
-					str = k2
-				} else {
-					str = fmt.Sprintf("%s/%s", k1, k2)
-				}
-				missing = append(missing, str)
-			}
+	missing := make([]string, 0, len(found))
+	for k, v := range found {
+		if !v {
+			missing = append(missing, k)
 		}
 	}
 

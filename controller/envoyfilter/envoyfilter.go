@@ -36,7 +36,7 @@ func newEnvoyFilter(ef *istionetworking.EnvoyFilter, pols []*state.AccessPolicy)
 			applyToVirtualHost(patch)
 			matchVirtualHost(patch, vhost)
 			merge(patch)
-			err := extAuthzPerRoute(patch, pol.Name, &pol.Global)
+			err := extAuthzPerRoute(patch, pol.Name, &pol.Default)
 			if err != nil {
 				return err
 			}

@@ -5,13 +5,12 @@ import (
 	"golang.org/x/oauth2"
 	"gopkg.in/square/go-jose.v2/jwt"
 	"istio-keycloak/logging/errors"
-	"istio-keycloak/state"
 )
 
 type bearerClaims struct {
 	expirable
 	jwt.Claims
-	Roles map[string][]string `json:"rol"`
+	Roles []string `json:"rol"`
 }
 
 func makeBearerClaims(ctx context.Context, req *request, tok *oauth2.Token) (*bearerClaims, error) {
@@ -20,12 +19,21 @@ func makeBearerClaims(ctx context.Context, req *request, tok *oauth2.Token) (*be
 		return nil, errors.Wrap(err, "failed making bearer claims")
 	}
 
+	count := len(accTok.RealmAccess.Roles)
+	for _, v := range accTok.ResourceAccess {
+		count += len(v.Roles)
+	}
+
 	claims := &bearerClaims{}
 	claims.Subject = idTok.Subject
-	claims.Roles = make(map[string][]string, len(accTok.ResourceAccess)+1)
-	claims.Roles[state.GlobalRoleKey] = accTok.RealmAccess.Roles
+	claims.Roles = make([]string, 0, count)
+	for _, v := range accTok.RealmAccess.Roles {
+		claims.Roles = append(claims.Roles, v)
+	}
 	for k, v := range accTok.ResourceAccess {
-		claims.Roles[k] = v.Roles
+		for _, v := range v.Roles {
+			claims.Roles = append(claims.Roles, k+"/"+v)
+		}
 	}
 
 	return claims, nil

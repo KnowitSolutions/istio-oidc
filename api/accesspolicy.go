@@ -34,10 +34,7 @@ type AccessPolicySpec struct {
 	OIDC  AccessPolicyOIDC `json:"oidc"`
 
 	// +kubebuilder:validation:Optional
-	GlobalRolesKey string `json:"globalRolesKey"`
-
-	// +kubebuilder:validation:Optional
-	Routes map[string]AccessPolicyRoute `json:"routes,omitempty"`
+	Routes []AccessPolicyRoute `json:"routes,omitempty"`
 }
 
 type AccessPolicyOIDC struct {
@@ -58,7 +55,9 @@ type AccessPolicyOIDCCredentialsSecret struct {
 // +kubebuilder:object:generate=true
 type AccessPolicyRoute struct {
 	// +kubebuilder:validation:Optional
-	Roles map[string][]string `json:"roles,omitempty"`
+	Name string `json:"name,omitempty"`
+	// +kubebuilder:validation:Optional
+	Roles []string `json:"roles,omitempty"`
 	// +kubebuilder:validation:Optional
 	DisableAccessPolicy bool `json:"disableAccessPolicy,omitempty"`
 }
