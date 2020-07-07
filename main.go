@@ -18,8 +18,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-// TODO: Switch to context log
-// TODO: Check where context is rightfully nil in logging
 func main() {
 	log.Setup()
 
