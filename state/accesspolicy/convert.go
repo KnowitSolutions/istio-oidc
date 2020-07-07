@@ -14,7 +14,7 @@ type accessPolicySpecStatus struct {
 }
 type accessPolicyOIDC api.AccessPolicyOIDC
 type accessPolicyRoute api.AccessPolicyRoute
-type accessPolicyRoles [][]string
+type accessPolicyRoles []string
 type accessPolicyRouteHeaders []api.AccessPolicyRouteHeader
 type accessPolicyRouteHeader api.AccessPolicyRouteHeader
 
@@ -103,8 +103,8 @@ func (apr *accessPolicyRoute) convert() Route {
 		Headers:     headers.convert(),
 	}
 }
-func (apr *accessPolicyRoles) convert() RoleSet {
-	roles := make(RoleSet, len(*apr))
+func (apr *accessPolicyRoles) convert() Roles {
+	roles := make(Roles, len(*apr))
 	for i := range *apr {
 		roles[i] = (*apr)[i]
 	}

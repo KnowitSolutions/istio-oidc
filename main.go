@@ -18,6 +18,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
+// TODO: Leader election
 func main() {
 	log.Setup()
 

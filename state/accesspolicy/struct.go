@@ -30,18 +30,17 @@ type Oidc struct {
 type Routes map[string]Route
 type Route struct {
 	EnableAuthz bool
-	Roles       RoleSet
+	Roles       Roles
 	Headers     Headers
 }
 
-type RoleSet []Roles
 type Roles []string
 
 type Headers []Header
 type Header struct {
 	Name  string
 	Value string
-	Roles RoleSet
+	Roles Roles
 }
 
 func (ap *AccessPolicy) UpdateOidcProvider(ctx context.Context) error {
