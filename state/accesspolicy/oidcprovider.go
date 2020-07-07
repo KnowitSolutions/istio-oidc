@@ -7,7 +7,7 @@ import (
 	"gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/jwt"
 	"istio-keycloak/config"
-	"istio-keycloak/logging/errors"
+	"istio-keycloak/log/errors"
 	"net/http"
 	"time"
 )

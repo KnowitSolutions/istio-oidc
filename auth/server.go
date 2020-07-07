@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"istio-keycloak/logging/errors"
+	"istio-keycloak/log/errors"
 	"istio-keycloak/state"
 	"istio-keycloak/state/accesspolicy"
 	"net/http"

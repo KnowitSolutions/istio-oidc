@@ -2,11 +2,10 @@ package envoyfilter
 
 import (
 	"context"
-	"fmt"
-	"github.com/apex/log"
 	"istio-keycloak/api"
 	"istio-keycloak/config"
-	"istio-keycloak/logging/errors"
+	"istio-keycloak/log"
+	"istio-keycloak/log/errors"
 	"istio-keycloak/state/accesspolicy"
 	istionetworking "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -22,8 +21,7 @@ type controller struct {
 
 func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) {
 	ctx := context.Background()
-	scope := log.WithField("EnvoyFilter", fmt.Sprintf("%s/%s", req.Namespace, req.Name))
-	ctx = log.NewContext(ctx, scope)
+	ctx = log.WithValues(ctx, "EnvoyFilter", req.Namespace+"/"+req.Name)
 
 	ef := istionetworking.EnvoyFilter{}
 	err := c.Get(ctx, req.NamespacedName, &ef)
@@ -37,7 +35,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	if err != nil {
 		return reconcile.Result{}, err
 	} else if dup {
-		log.FromContext(ctx).Info("Deleting duplicate")
+		log.Info(ctx, nil, "Deleting duplicate")
 		err = c.Delete(ctx, &ef)
 		return reconcile.Result{}, errors.Wrap(err, "failed deleting EnvoyFilter")
 	}
@@ -48,18 +46,18 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	}
 
 	if len(aps) == 0 {
-		log.FromContext(ctx).Info("Deleting resource")
+		log.Info(ctx, nil, "Deleting resource")
 		err = c.Delete(ctx, &ef)
 		return reconcile.Result{}, err
 	}
 
 	for _, ap := range aps {
-		log.FromContext(ctx).WithField("AccessPolicy", ap.Name).
-			Info("Including AccessPolicy in EnvoyFilter")
+		vals := log.MakeValues("AccessPolicy", ap.Name)
+		log.Info(ctx, vals, "Including AccessPolicy in EnvoyFilter")
 	}
 
 	newEnvoyFilter(&ef, aps)
-	log.FromContext(ctx).Info("Updating resource")
+	log.Info(ctx, nil, "Updating resource")
 	err = c.Update(ctx, &ef)
 	if err != nil {
 		return reconcile.Result{}, errors.Wrap(err, "failed updating EnvoyFilter")
@@ -105,8 +103,8 @@ func (c *controller) fetchAccessPolicies(ctx context.Context, ef *istionetworkin
 		if reflect.DeepEqual(allAps.Items[i].Status.GetIngress().GetSelector(), ef.Spec.GetWorkloadSelector().GetLabels()) {
 			ap, err := accesspolicy.NewAccessPolicy(&allAps.Items[i], nil)
 			if err != nil {
-				log.FromContext(ctx).WithError(err).WithField("AccessPolicy", allAps.Items[i].Name).
-					Error("Invalid AccessPolicy")
+				err = errors.Wrap(err, "", "AccessPolicy", allAps.Items[i].Name)
+				log.Error(ctx, err, "Invalid AccessPolicy")
 			} else {
 				aps = append(aps, ap)
 			}

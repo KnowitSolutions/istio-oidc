@@ -2,16 +2,13 @@ package main
 
 import (
 	"flag"
-	"github.com/apex/log"
-	"github.com/apex/log/handlers/cli"
-	"github.com/apex/log/handlers/logfmt"
 	authv2 "github.com/envoyproxy/go-control-plane/envoy/service/auth/v2"
-	"golang.org/x/crypto/ssh/terminal"
 	"google.golang.org/grpc"
 	"istio-keycloak/auth"
 	"istio-keycloak/config"
 	"istio-keycloak/controller"
-	"istio-keycloak/logging"
+	"istio-keycloak/log"
+	"istio-keycloak/log/errors"
 	"istio-keycloak/state"
 	"istio-keycloak/telemetry"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -21,13 +18,10 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-// TODO: Switch to context logging
+// TODO: Switch to context log
+// TODO: Check where context is rightfully nil in logging
 func main() {
-	if terminal.IsTerminal(int(os.Stdout.Fd())) {
-		log.SetHandler(cli.Default)
-	} else {
-		log.SetHandler(logfmt.Default)
-	}
+	log.Setup()
 
 	cfg := flag.String("config", "config.yaml", "Configuration file to load")
 	flag.Parse()
@@ -36,7 +30,8 @@ func main() {
 	keyStore := state.NewKeyStore()
 	_, err := keyStore.MakeKey()
 	if err != nil {
-		log.WithError(err).Fatal("Unable to generate cryptographic key")
+		log.Error(nil, err, "Unable to generate cryptographic key")
+		os.Exit(1)
 	}
 
 	apStore := state.NewAccessPolicyStore()
@@ -48,11 +43,12 @@ func main() {
 }
 
 func startCtrl(apStore state.AccessPolicyStore) {
-	ctrl.SetLogger(logging.Log)
+	ctrl.SetLogger(log.Shim)
 
 	cfg, err := ctrl.GetConfig()
 	if err != nil {
-		log.WithError(err).Fatal("Unable to load Kubernetes config")
+		log.Error(nil, err, "Unable to load Kubernetes config")
+		os.Exit(1)
 	}
 
 	scheme := runtime.NewScheme()
@@ -63,25 +59,29 @@ func startCtrl(apStore state.AccessPolicyStore) {
 	}
 	mgr, err := ctrl.NewManager(cfg, opts)
 	if err != nil {
-		log.WithError(err).Fatal("Unable to create manager")
+		log.Error(nil, err, "Unable to create manager")
+		os.Exit(1)
 	}
 
 	err = controller.Register(mgr, apStore)
 	if err != nil {
-		log.WithError(err).Fatal("Unable to register controllers")
+		log.Error(nil, err, "Unable to register controllers")
+		os.Exit(1)
 	}
 
 	err = mgr.Start(ctrl.SetupSignalHandler())
 	if err != nil {
-		log.WithError(err).Fatal("Unable to start manager")
+		log.Error(nil, err, "Unable to start manager")
+		os.Exit(1)
 	}
 }
 
 func startGrpc(keyStore state.KeyStore, apStore state.AccessPolicyStore) {
 	lis, err := net.Listen("tcp", config.Service.Address)
 	if err != nil {
-		log.WithError(err).WithField("address", config.Service.Address).
-			Fatal("Unable to bind TCP socket")
+		err = errors.Wrap(err, "", "address", config.Service.Address)
+		log.Error(nil, err, "Unable to bind TCP socket")
+		os.Exit(1)
 	}
 
 	srv := grpc.NewServer()
@@ -89,7 +89,8 @@ func startGrpc(keyStore state.KeyStore, apStore state.AccessPolicyStore) {
 
 	err = srv.Serve(lis)
 	if err != nil {
-		log.WithError(err).Fatal("Unable to start gRPC server")
+		log.Error(nil, err, "Unable to start gRPC server")
+		os.Exit(1)
 	}
 }
 
@@ -113,7 +114,8 @@ func startTelemetry() {
 
 	err := srv.ListenAndServe()
 	if err != nil {
-		log.WithError(err).WithField("address", config.Telemetry.Address).
-			Fatal("Unable to start HTTP server")
+		err = errors.Wrap(err, "", "address", config.Telemetry.Address)
+		log.Error(nil, err, "Unable to start HTTP server")
+		os.Exit(1)
 	}
 }

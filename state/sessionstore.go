@@ -2,8 +2,8 @@ package state
 
 import (
 	"crypto/sha512"
-	"github.com/apex/log"
 	"istio-keycloak/config"
+	"istio-keycloak/log"
 	"sync"
 	"time"
 )
@@ -61,8 +61,8 @@ func (ss *sessionStore) sessionCleaner() {
 		max := start.Add(-config.Sessions.CleaningGracePeriod)
 		tot := 0
 
-		log.WithField("max", max.Format(time.RFC3339)).
-			Info("Cleaning sessions")
+		vals := log.MakeValues("max", max.Format(time.RFC3339))
+		log.Info(nil, vals, "Cleaning sessions")
 
 		ss.mu.RLock()
 		for k, v := range ss.store {
@@ -81,7 +81,8 @@ func (ss *sessionStore) sessionCleaner() {
 
 		stop := time.Now()
 		dur := stop.Sub(start)
-		log.WithFields(log.Fields{"duration": dur, "total": tot}).
-			Info("Done cleaning sessions")
+
+		vals = log.MakeValues("duration", dur, "total", tot)
+		log.Info(nil, vals, "Done cleaning sessions")
 	}
 }

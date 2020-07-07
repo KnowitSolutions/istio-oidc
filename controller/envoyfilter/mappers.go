@@ -2,9 +2,9 @@ package envoyfilter
 
 import (
 	"context"
-	"github.com/apex/log"
 	"istio-keycloak/api"
 	"istio-keycloak/config"
+	"istio-keycloak/log"
 	istionetworking "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	"k8s.io/apimachinery/pkg/types"
 	"reflect"
@@ -26,7 +26,7 @@ func (m *mapper) Map(obj handler.MapObject) []reconcile.Request {
 		client.InNamespace(config.Controller.IstioRootNamespace),
 		client.MatchingLabels(config.Controller.EnvoyFilterLabels))
 	if err != nil {
-		log.WithError(err).Error("Failed fetching EnvoyFilters")
+		log.Error(ctx, err, "Failed fetching EnvoyFilters")
 		return nil
 	}
 

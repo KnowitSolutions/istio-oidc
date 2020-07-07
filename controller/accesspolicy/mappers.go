@@ -2,8 +2,9 @@ package accesspolicy
 
 import (
 	"context"
-	"github.com/apex/log"
 	"istio-keycloak/api"
+	"istio-keycloak/log"
+	"istio-keycloak/log/errors"
 	istionetworking "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	"k8s.io/apimachinery/pkg/types"
 	"reflect"
@@ -31,8 +32,8 @@ func (m *mapper) Map(obj handler.MapObject) []reconcile.Request {
 	aps := api.AccessPolicyList{}
 	err := m.List(ctx, &aps, opts...)
 	if err != nil {
-		log.WithError(err).WithField("namespace", ns).
-			Error("Failed fetching AccessPolicies")
+		err := errors.Wrap(err, "", "namespace", ns)
+		log.Error(ctx, err, "Failed fetching AccessPolicies")
 		return nil
 	}
 

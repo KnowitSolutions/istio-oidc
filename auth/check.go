@@ -2,9 +2,9 @@ package auth
 
 import (
 	"context"
-	"github.com/apex/log"
 	"golang.org/x/oauth2"
-	"istio-keycloak/logging/errors"
+	"istio-keycloak/log"
+	"istio-keycloak/log/errors"
 	"istio-keycloak/state"
 	"net/http"
 	"strings"
@@ -23,19 +23,21 @@ type bearerClaims struct {
 
 func (srv *Server) check(ctx context.Context, req *request) *response {
 	var res *response
+	loc := req.location()
+	ctx = log.WithValues(ctx, "url", loc.String(), "bearer", req.rawToken(), "AccessPolicy", req.policy.Name)
 
 	if req.policy.Oidc.IsCallback(req.url) {
 		reqCallbackCount.WithLabelValues(req.policy.Name).Inc()
 		res = srv.finishOidc(ctx, req)
-	} else if !srv.isAuthenticated(req) {
+	} else if !srv.isAuthenticated(ctx, req) {
 		reqUnauthdCount.WithLabelValues(req.policy.Name).Inc()
-		res = srv.startOidc(req)
+		res = srv.startOidc(ctx, req)
 	} else if req.claims.isExpired() {
 		reqExpiredCount.WithLabelValues(req.policy.Name).Inc()
 		res = srv.updateToken(ctx, req)
 	} else {
 		reqAuthdCount.WithLabelValues(req.policy.Name).Inc()
-		res = srv.authorize(req)
+		res = srv.authorize(ctx, req)
 	}
 
 	switch res.status {
@@ -58,7 +60,7 @@ func (srv *Server) check(ctx context.Context, req *request) *response {
 	return res
 }
 
-func (srv *Server) isAuthenticated(req *request) bool {
+func (srv *Server) isAuthenticated(ctx context.Context, req *request) bool {
 	token := req.bearer()
 	if token == "" {
 		return false
@@ -66,7 +68,7 @@ func (srv *Server) isAuthenticated(req *request) bool {
 
 	err := parseToken(srv.GetKey(), token, &req.claims)
 	if err != nil {
-		log.WithError(err).Error("Unable to check authentication")
+		log.Error(ctx, err, "Unable to check authentication")
 		return false
 	}
 
@@ -75,13 +77,13 @@ func (srv *Server) isAuthenticated(req *request) bool {
 	return ok
 }
 
-func (srv *Server) startOidc(req *request) *response {
-	log.WithFields(req).Info("Starting OIDC")
+func (srv *Server) startOidc(ctx context.Context, req *request) *response {
+	log.Info(ctx, nil, "Starting OIDC")
 
 	claims := &stateClaims{Path: req.url.Path}
 	tok, err := makeToken(srv.GetKey(), claims, time.Time{})
 	if err != nil {
-		log.WithError(err).Error("Unable to start OIDC flow")
+		log.Error(ctx, err, "Unable to start OIDC flow")
 		return &response{status: http.StatusInternalServerError}
 	}
 
@@ -93,31 +95,31 @@ func (srv *Server) startOidc(req *request) *response {
 }
 
 func (srv *Server) finishOidc(ctx context.Context, req *request) *response {
-	log.WithFields(req).Info("Finishing OIDC")
+	log.Info(ctx, nil, "Finishing OIDC")
 
 	query := req.url.Query()
 	if query["state"] == nil || len(query["state"]) != 1 ||
 		query["code"] == nil || len(query["code"]) != 1 {
-		log.WithFields(req).Error("Invalid OIDC callback")
+		log.Error(ctx, nil, "Invalid OIDC callback")
 		return &response{status: http.StatusBadRequest}
 	}
 
 	claims := &stateClaims{}
 	err := parseToken(srv.GetKey(), query["state"][0], claims)
 	if err != nil {
-		log.WithError(err).Error("Unable to finnish OIDC flow")
+		log.Error(ctx, nil, "Unable to finnish OIDC flow")
 		return &response{status: http.StatusBadRequest}
 	}
 
 	cfg := req.policy.Oidc.OAuth2(req.url)
 	tok, err := cfg.Exchange(ctx, query["code"][0])
 	if err != nil {
-		err = errors.Wrap(err, "failed authorization code exchange")
-		log.WithFields(req).WithFields(log.Fields{
-			"clientId": cfg.ClientID,
-			"url":      cfg.Endpoint.TokenURL,
-			"roles":    strings.Join(cfg.Scopes, ","),
-		}).WithError(err).Error("Unable to finnish OIDC flow")
+		err = errors.Wrap(
+			err, "failed authorization code exchange",
+			"clientId", cfg.ClientID,
+			"url", cfg.Endpoint.TokenURL,
+			"roles", strings.Join(cfg.Scopes, ","))
+		log.Error(ctx, err, "Unable to finnish OIDC flow")
 		return &response{status: http.StatusForbidden}
 	}
 
@@ -125,7 +127,7 @@ func (srv *Server) finishOidc(ctx context.Context, req *request) *response {
 }
 
 func (srv *Server) updateToken(ctx context.Context, req *request) *response {
-	log.WithFields(req).Info("Updating JWT")
+	log.Info(ctx, nil, "Updating JWT")
 
 	cfg := req.policy.Oidc.OAuth2(req.url)
 	src := cfg.TokenSource(ctx, &oauth2.Token{RefreshToken: req.session.RefreshToken})
@@ -133,7 +135,7 @@ func (srv *Server) updateToken(ctx context.Context, req *request) *response {
 	tok, err := src.Token()
 	if err != nil {
 		err = errors.Wrap(err, "failed getting access token")
-		log.WithFields(req).WithError(err).Error("Unable to refresh access token")
+		log.Error(ctx, err, "Unable to refresh access token")
 		return &response{status: http.StatusForbidden}
 	}
 
@@ -143,7 +145,7 @@ func (srv *Server) updateToken(ctx context.Context, req *request) *response {
 func (srv *Server) setToken(ctx context.Context, req *request, token *oauth2.Token, uri string) *response {
 	data, err := req.policy.Oidc.ExtractTokenData(ctx, token)
 	if err != nil {
-		log.WithFields(req).WithError(err).Error("Unable to set access token")
+		log.Error(ctx, err, "Unable to set access token")
 		return &response{status: http.StatusInternalServerError}
 	}
 
@@ -153,7 +155,7 @@ func (srv *Server) setToken(ctx context.Context, req *request, token *oauth2.Tok
 
 	tok, err := makeToken(srv.GetKey(), claims, token.Expiry)
 	if err != nil {
-		log.WithFields(req).WithError(err).Error("Unable to set access token")
+		log.Error(ctx, err, "Unable to set access token")
 		return &response{status: http.StatusInternalServerError}
 	}
 
@@ -182,14 +184,14 @@ func (srv *Server) setToken(ctx context.Context, req *request, token *oauth2.Tok
 	return res
 }
 
-func (srv *Server) authorize(req *request) *response {
-	log.WithFields(req).Info("Authorizing")
+func (srv *Server) authorize(ctx context.Context, req *request) *response {
+	log.Info(ctx, nil, "Authorizing")
 
 	if !hasRoles(req.route.Roles, req.claims.Roles) {
-		log.WithFields(req).Info("Denying request")
+		log.Info(ctx, nil, "Denying request")
 		return &response{status: http.StatusForbidden}
 	} else {
-		log.WithFields(req).Info("Allowing request")
+		log.Info(ctx, nil, "Allowing request")
 	}
 
 	headers := make(map[string]string, len(req.route.Headers))

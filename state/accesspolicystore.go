@@ -2,7 +2,7 @@ package state
 
 import (
 	"context"
-	"github.com/apex/log"
+	"istio-keycloak/log"
 	"istio-keycloak/state/accesspolicy"
 	"sync"
 )
@@ -10,7 +10,7 @@ import (
 type AccessPolicyStore interface {
 	GetAccessPolicy(string) *accesspolicy.AccessPolicy
 	UpdateAccessPolicy(context.Context, *accesspolicy.AccessPolicy)
-	DeleteAccessPolicy(string)
+	DeleteAccessPolicy(context.Context, string)
 }
 
 type accessPolicyStore struct {
@@ -37,20 +37,22 @@ func (aps *accessPolicyStore) UpdateAccessPolicy(ctx context.Context, pol *acces
 func (aps *accessPolicyStore) updateAccessPolicy(ctx context.Context, pol *accesspolicy.AccessPolicy) {
 	err := pol.UpdateOidcProvider(ctx)
 	if err != nil {
-		log.WithError(err).Error("Error while loading access policy")
+		log.Error(ctx, err, "Error while loading access policy")
 	}
 
 	aps.entriesMu.Lock()
 	aps.entries[pol.Name] = pol
 	aps.entriesMu.Unlock()
 
-	log.WithField("AccessPolicy", pol.Name).Info("Updated OIDC settings")
+	vals := log.MakeValues("AccessPolicy", pol.Name)
+	log.Info(ctx, vals,"Updated OIDC settings")
 }
 
-func (aps *accessPolicyStore) DeleteAccessPolicy(name string) {
+func (aps *accessPolicyStore) DeleteAccessPolicy(ctx context.Context, name string) {
 	aps.entriesMu.Lock()
 	delete(aps.entries, name)
 	aps.entriesMu.Unlock()
 
-	log.WithField("AccessPolicy", name).Info("Deleted OIDC settings")
+	vals := log.MakeValues("AccessPolicy", name)
+	log.Info(ctx, vals,"Deleted OIDC settings")
 }

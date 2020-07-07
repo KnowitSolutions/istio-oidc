@@ -45,7 +45,11 @@ func Wrap(err error, msg string, meta ...interface{}) error {
 
 func (err *annotated) Error() string {
 	if err.cause != nil {
-		return err.msg + ": " + err.cause.Error()
+		if err.msg != "" {
+			return err.msg + ": " + err.cause.Error()
+		} else {
+			return err.cause.Error()
+		}
 	} else {
 		return err.msg
 	}

@@ -2,11 +2,10 @@ package accesspolicy
 
 import (
 	"context"
-	"fmt"
-	"github.com/apex/log"
 	"istio-keycloak/api"
 	"istio-keycloak/config"
-	"istio-keycloak/logging/errors"
+	"istio-keycloak/log"
+	"istio-keycloak/log/errors"
 	"istio-keycloak/state"
 	"istio-keycloak/state/accesspolicy"
 	istionetworking "istio.io/client-go/pkg/apis/networking/v1alpha3"
@@ -30,8 +29,7 @@ type controller struct {
 
 func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) {
 	ctx := context.Background()
-	scope := log.WithField("AccessPolicy", fmt.Sprintf("%s/%s", req.Namespace, req.Name))
-	ctx = log.NewContext(ctx, scope)
+	ctx = log.WithValues(ctx, "AccessPolicy", req.Namespace+"/"+req.Name)
 
 	ap := api.AccessPolicy{}
 	err := c.Get(ctx, req.NamespacedName, &ap)
@@ -42,7 +40,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	}
 
 	if ap.DeletionTimestamp.IsZero() && !contains(ap.Finalizers, finalizer) {
-		log.FromContext(ctx).Info("Adding finalizer")
+		log.Info(ctx, nil, "Adding finalizer")
 		ap.Finalizers = append(ap.Finalizers, finalizer)
 		if err := c.Update(ctx, &ap); err != nil {
 			return reconcile.Result{}, errors.Wrap(err, "failed adding AccessPolicy finalizer")
@@ -68,7 +66,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	}
 
 	if !ap.DeletionTimestamp.IsZero() && contains(ap.Finalizers, finalizer) {
-		log.FromContext(ctx).Info("Removing finalizer")
+		log.Info(ctx, nil, "Removing finalizer")
 		ap.Finalizers = remove(ap.Finalizers, finalizer)
 		if err := c.Update(ctx, &ap); err != nil {
 			return reconcile.Result{}, errors.Wrap(err, "failed removing AccessPolicy finalizer")
@@ -91,7 +89,7 @@ func (c *controller) reconcileStatus(ctx context.Context, ap *api.AccessPolicy) 
 		ap.Status.Ingress.Selector = selector(&gw)
 		ap.Status.VirtualHosts = virtualHosts(&gw)
 
-		log.FromContext(ctx).Info("Updating status")
+		log.Info(ctx, nil, "Updating status")
 		err = c.Status().Update(ctx, ap)
 		if err != nil {
 			return errors.Wrap(err, "failed updating AccessPolicy status")
@@ -103,7 +101,7 @@ func (c *controller) reconcileStatus(ctx context.Context, ap *api.AccessPolicy) 
 
 func (c *controller) reconcileEnvoyFilter(ctx context.Context, ap *api.AccessPolicy) error {
 	if len(ap.Status.GetIngress().GetSelector()) == 0 {
-		log.FromContext(ctx).Info("Missing workload selector")
+		log.Info(ctx, nil, "Missing workload selector")
 		return nil
 	}
 
@@ -123,14 +121,14 @@ func (c *controller) reconcileEnvoyFilter(ctx context.Context, ap *api.AccessPol
 	}
 
 	if len(efs) == 0 {
-		log.FromContext(ctx).Info("Creating EnvoyFilter")
+		log.Info(ctx, nil, "Creating EnvoyFilter")
 		err = c.Create(ctx, newEnvoyFilter(ap))
 		if err != nil {
 			return errors.Wrap(err, "failed creating EnvoyFilter")
 		}
 	} else {
-		log.FromContext(ctx).WithField("EnvoyFilter", efs[0].Name).
-			Info("Found EnvoyFilter")
+		vals := log.MakeValues("EnvoyFilter", efs[0].Name)
+		log.Info(ctx, vals, "Found EnvoyFilter")
 	}
 
 	return nil
@@ -148,15 +146,15 @@ func (c *controller) reconcileAuth(ctx context.Context, ap *api.AccessPolicy) er
 
 		cfg, err := accesspolicy.NewAccessPolicy(ap, &cred)
 		if err != nil {
-			log.FromContext(ctx).WithError(err).Error("Invalid AccessPolicy")
+			log.Error(ctx, err, "Invalid AccessPolicy")
 			return nil
 		}
 
-		log.FromContext(ctx).Info("Updating OIDC settings")
+		log.Info(ctx, nil, "Updating OIDC settings")
 		c.UpdateAccessPolicy(ctx, cfg)
 	} else {
-		log.FromContext(ctx).Info("Deleting OIDC settings")
-		c.DeleteAccessPolicy(ap.Name)
+		log.Info(ctx, nil, "Deleting OIDC settings")
+		c.DeleteAccessPolicy(ctx, ap.Name)
 	}
 
 	return nil

@@ -4,7 +4,7 @@ import (
 	"istio-keycloak/api"
 	"istio-keycloak/config"
 	"istio-keycloak/controller/predicate"
-	"istio-keycloak/logging/errors"
+	"istio-keycloak/log/errors"
 	istionetworking "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"

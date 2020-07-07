@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"github.com/apex/log"
 	"gopkg.in/square/go-jose.v2"
 	"istio-keycloak/state"
 	"istio-keycloak/state/accesspolicy"
@@ -26,6 +25,19 @@ type response struct {
 	headers map[string]string
 }
 
+func (req *request) location() url.URL {
+	loc := req.url
+	query := loc.Query()
+	for i := range query["state"] {
+		query["state"][i] = "-"
+	}
+	for i := range query["code"] {
+		query["state"][i] = "-"
+	}
+	loc.RawQuery = query.Encode()
+	return loc
+}
+
 func (req *request) bearer() string {
 	for _, c := range req.cookies {
 		if c.Name == bearerCookie {
@@ -36,35 +48,11 @@ func (req *request) bearer() string {
 	return ""
 }
 
-func (req *request) Fields() log.Fields {
-	maskQuery := func(query url.Values, field string) {
-		if query[field] == nil {
-			return
-		}
-
-		for i := range query[field] {
-			query[field][i] = "-"
-		}
-	}
-
-	loc := req.url
-	query := loc.Query()
-	maskQuery(query, "state")
-	maskQuery(query, "code")
-	loc.RawQuery = query.Encode()
-
-	var bearer string
+func (req *request) rawToken() string {
 	tok, err := jose.ParseSigned(req.bearer())
 	if err == nil {
-		bearer = string(tok.UnsafePayloadWithoutVerification())
+		return string(tok.UnsafePayloadWithoutVerification())
 	} else {
-		bearer = "error"
-	}
-
-	return log.Fields{
-		"AccessPolicy": req.policy.Name,
-		"url":          loc.String(),
-		"bearer":       bearer,
-		"session":      req.session != nil,
+		return ""
 	}
 }

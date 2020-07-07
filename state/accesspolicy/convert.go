@@ -3,7 +3,7 @@ package accesspolicy
 import (
 	"fmt"
 	"istio-keycloak/api"
-	"istio-keycloak/logging/errors"
+	"istio-keycloak/log/errors"
 	core "k8s.io/api/core/v1"
 	"net/url"
 )

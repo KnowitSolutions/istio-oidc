@@ -3,13 +3,13 @@ package auth
 import (
 	"context"
 	"fmt"
-	"github.com/apex/log"
 	core "github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
 	auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v2"
 	types "github.com/envoyproxy/go-control-plane/envoy/type"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"google.golang.org/genproto/googleapis/rpc/code"
 	"google.golang.org/genproto/googleapis/rpc/status"
+	"istio-keycloak/log"
 	"net/http"
 )
 
@@ -30,7 +30,7 @@ func (srv *ServerV2) Check(ctx context.Context, req *auth.CheckRequest) (*auth.C
 
 	var r *response
 	if err != nil {
-		log.WithError(err).Error("Unable to construct request object")
+		log.Error(ctx, err, "Unable to construct request object")
 		r = &response{status: http.StatusBadRequest}
 	} else {
 		r = srv.check(ctx, data)

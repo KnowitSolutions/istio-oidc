@@ -1,16 +1,18 @@
 package config
 
 import (
-	"github.com/apex/log"
 	"gopkg.in/yaml.v3"
+	"istio-keycloak/log"
+	"istio-keycloak/log/errors"
 	"os"
 )
 
 func Load(filename string) {
 	file, err := os.Open(filename)
 	if err != nil {
-		log.WithError(err).WithField("filename", filename).
-			Fatal("Unable to load configuration")
+		err = errors.Wrap(err, "", "filename", filename)
+		log.Error(nil, err, "Unable to load configuration")
+		os.Exit(1)
 	}
 	defer func() { _ = file.Close() }()
 
@@ -18,8 +20,9 @@ func Load(filename string) {
 	dec := yaml.NewDecoder(file)
 	err = dec.Decode(&cfg)
 	if err != nil {
-		log.WithError(err).WithField("filename", filename).
-			Fatal("Unable to load configuration")
+		err = errors.Wrap(err, "", "filename", filename)
+		log.Error(nil, err, "Unable to load configuration")
+		os.Exit(1)
 	}
 
 	cfg.normalize()
