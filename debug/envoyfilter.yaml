@@ -11,10 +11,10 @@ spec:
     patch:
       operation: ADD
       value:
-        name: envoy-keycloak
+        name: istio-keycloak
         connect_timeout: 1s
         load_assignment:
-          cluster_name: envoy-keycloak
+          cluster_name: istio-keycloak
           endpoints:
           - lb_endpoints:
             - endpoint:

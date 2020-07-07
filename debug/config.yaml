@@ -1,5 +1,5 @@
 ExtAuthz:
-  ClusterName: envoy-keycloak
+  ClusterName: istio-keycloak
   Timeout: 1h
 
 Keycloak:
