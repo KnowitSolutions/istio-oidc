@@ -1,4 +1,5 @@
 Controller:
+  LeaderElectionNamespace: # TODO: Set namespace
   TokenKeyNamespace: # TODO: Set namespace
 
 ExtAuthz:

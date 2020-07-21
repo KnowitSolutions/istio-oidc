@@ -18,7 +18,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-// TODO: Leader election
 func main() {
 	log.Setup()
 
@@ -46,9 +45,12 @@ func startCtrl(keyStore state.KeyStore, apStore state.AccessPolicyStore) {
 
 	scheme := runtime.NewScheme()
 	opts := ctrl.Options{
-		Scheme:                 scheme,
-		HealthProbeBindAddress: "0",
-		MetricsBindAddress:     "0",
+		Scheme:                  scheme,
+		HealthProbeBindAddress:  "0",
+		MetricsBindAddress:      "0",
+		LeaderElection:          true,
+		LeaderElectionNamespace: config.Controller.LeaderElectionNamespace,
+		LeaderElectionID:        config.Controller.LeaderElectionName,
 	}
 	mgr, err := ctrl.NewManager(cfg, opts)
 	if err != nil {

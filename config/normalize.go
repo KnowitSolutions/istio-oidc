@@ -34,6 +34,20 @@ func (c *controller) normalize() {
 		}
 	}
 
+	if c.LeaderElectionNamespace == "" {
+		ns, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
+		if err != nil {
+			log.Error(nil, errors.New("missing leader election namespace"), "Failed loading config")
+			os.Exit(1)
+		}
+
+		c.LeaderElectionNamespace = string(ns)
+	}
+
+	if c.LeaderElectionName == "" {
+		c.LeaderElectionName = "istio-keycloak"
+	}
+
 	if c.TokenKeyNamespace == "" {
 		ns, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
 		if err != nil {
