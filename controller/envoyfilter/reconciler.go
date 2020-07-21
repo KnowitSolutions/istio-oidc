@@ -15,39 +15,39 @@ import (
 	"sort"
 )
 
-type controller struct {
+type reconciler struct {
 	client.Client
 }
 
-func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) {
+func (r *reconciler) Reconcile(req reconcile.Request) (reconcile.Result, error) {
 	ctx := context.Background()
 	ctx = log.WithValues(ctx, "EnvoyFilter", req.Namespace+"/"+req.Name)
 
 	ef := istionetworking.EnvoyFilter{}
-	err := c.Get(ctx, req.NamespacedName, &ef)
+	err := r.Get(ctx, req.NamespacedName, &ef)
 	if apierrors.IsNotFound(err) {
 		return reconcile.Result{}, nil
 	} else if err != nil {
 		return reconcile.Result{}, errors.Wrap(err, "failed getting EnvoyFilter")
 	}
 
-	dup, err := c.isDuplicate(ctx, &ef)
+	dup, err := r.isDuplicate(ctx, &ef)
 	if err != nil {
 		return reconcile.Result{}, err
 	} else if dup {
 		log.Info(ctx, nil, "Deleting duplicate")
-		err = c.Delete(ctx, &ef)
+		err = r.Delete(ctx, &ef)
 		return reconcile.Result{}, errors.Wrap(err, "failed deleting EnvoyFilter")
 	}
 
-	aps, err := c.fetchAccessPolicies(ctx, &ef)
+	aps, err := r.fetchAccessPolicies(ctx, &ef)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 
 	if len(aps) == 0 {
 		log.Info(ctx, nil, "Deleting resource")
-		err = c.Delete(ctx, &ef)
+		err = r.Delete(ctx, &ef)
 		return reconcile.Result{}, err
 	}
 
@@ -58,7 +58,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 
 	newEnvoyFilter(&ef, aps)
 	log.Info(ctx, nil, "Updating resource")
-	err = c.Update(ctx, &ef)
+	err = r.Update(ctx, &ef)
 	if err != nil {
 		return reconcile.Result{}, errors.Wrap(err, "failed updating EnvoyFilter")
 	}
@@ -66,9 +66,9 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	return reconcile.Result{}, nil
 }
 
-func (c *controller) isDuplicate(ctx context.Context, ef *istionetworking.EnvoyFilter) (bool, error) {
+func (r *reconciler) isDuplicate(ctx context.Context, ef *istionetworking.EnvoyFilter) (bool, error) {
 	allEfs := istionetworking.EnvoyFilterList{}
-	err := c.List(ctx, &allEfs,
+	err := r.List(ctx, &allEfs,
 		client.InNamespace(config.Controller.IstioRootNamespace),
 		client.MatchingLabels(config.Controller.EnvoyFilterLabels))
 	if err != nil {
@@ -91,9 +91,9 @@ func (c *controller) isDuplicate(ctx context.Context, ef *istionetworking.EnvoyF
 	return ef.Name != efs[0].Name, nil
 }
 
-func (c *controller) fetchAccessPolicies(ctx context.Context, ef *istionetworking.EnvoyFilter) ([]*accesspolicy.AccessPolicy, error) {
+func (r *reconciler) fetchAccessPolicies(ctx context.Context, ef *istionetworking.EnvoyFilter) ([]*accesspolicy.AccessPolicy, error) {
 	allAps := api.AccessPolicyList{}
-	err := c.List(ctx, &allAps)
+	err := r.List(ctx, &allAps)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed listing AccessPolicies")
 	}

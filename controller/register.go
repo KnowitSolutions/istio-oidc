@@ -8,12 +8,12 @@ import (
 )
 
 func Register(mgr ctrl.Manager, apStore state.AccessPolicyStore) error {
-	err := accesspolicy.New(mgr, apStore)
+	err := accesspolicy.Register(mgr, apStore)
 	if err != nil {
 		return err
 	}
 
-	err = envoyfilter.New(mgr)
+	err = envoyfilter.Register(mgr)
 	if err != nil {
 		return err
 	}
