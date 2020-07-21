@@ -1,5 +1,5 @@
 Controller:
-  TokenKeyNamespace:  # TODO: Set namespace
+  TokenKeyNamespace: # TODO: Set namespace
 
 ExtAuthz:
   ClusterName: istio-keycloak
