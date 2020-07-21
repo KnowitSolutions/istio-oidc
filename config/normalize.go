@@ -1,7 +1,10 @@
 package config
 
 import (
-	"log"
+	"io/ioutil"
+	"istio-keycloak/log"
+	"istio-keycloak/log/errors"
+	"os"
 	"strings"
 	"time"
 )
@@ -30,6 +33,20 @@ func (c *controller) normalize() {
 			"istio-keycloak": "ext-authz",
 		}
 	}
+
+	if c.TokenKeyNamespace == "" {
+		ns, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
+		if err != nil {
+			log.Error(nil, errors.New("missing token key namespace"), "Failed loading config")
+			os.Exit(1)
+		}
+
+		c.TokenKeyNamespace = string(ns)
+	}
+
+	if c.TokenKeyName == "" {
+		c.TokenKeyName = "istio-keycloak"
+	}
 }
 
 func (s *service) normalize() {
@@ -40,7 +57,8 @@ func (s *service) normalize() {
 
 func (ea *extAuthz) normalize() {
 	if ea.ClusterName == "" {
-		log.Fatal("Missing cluster name")
+		log.Error(nil, errors.New("missing cluster name"), "Failed loading config")
+		os.Exit(1)
 	}
 
 	if ea.Timeout == 0 {
@@ -62,7 +80,8 @@ func (s *sessions) normalize() {
 
 func (k *keycloak) normalize() {
 	if k.Url == "" {
-		log.Fatal("Missing Keycloak URL")
+		log.Error(nil, errors.New("missing Keycloak URL"), "Failed loading config")
+		os.Exit(1)
 	}
 }
 

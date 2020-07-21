@@ -1,14 +1,12 @@
 package state
 
 import (
-	"crypto/rand"
-	"crypto/sha512"
 	"sync"
 )
 
 type KeyStore interface {
 	GetKey() []byte
-	MakeKey() ([]byte, error)
+	UpdateKey(key []byte)
 }
 
 type keyStore struct {
@@ -26,12 +24,8 @@ func (ks *keyStore) GetKey() []byte {
 	return ks.key
 }
 
-func (ks *keyStore) MakeKey() ([]byte, error) {
-	ks.mu.Lock()
-	defer ks.mu.Unlock()
-
-	ks.key = make([]byte, sha512.Size)
-	_, err := rand.Read(ks.key)
-
-	return ks.key, err
+func (ks *keyStore) UpdateKey(key []byte) {
+	ks.mu.RLock()
+	defer ks.mu.RUnlock()
+	ks.key = key
 }

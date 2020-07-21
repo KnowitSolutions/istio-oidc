@@ -27,21 +27,15 @@ func main() {
 	config.Load(*cfg)
 
 	keyStore := state.NewKeyStore()
-	_, err := keyStore.MakeKey()
-	if err != nil {
-		log.Error(nil, err, "Unable to generate cryptographic key")
-		os.Exit(1)
-	}
-
 	apStore := state.NewAccessPolicyStore()
 
-	go startCtrl(apStore)
+	go startCtrl(keyStore, apStore)
 	go startGrpc(keyStore, apStore)
 	go startTelemetry()
 	select {}
 }
 
-func startCtrl(apStore state.AccessPolicyStore) {
+func startCtrl(keyStore state.KeyStore, apStore state.AccessPolicyStore) {
 	ctrl.SetLogger(log.Shim)
 
 	cfg, err := ctrl.GetConfig()
@@ -62,7 +56,7 @@ func startCtrl(apStore state.AccessPolicyStore) {
 		os.Exit(1)
 	}
 
-	err = controller.Register(mgr, apStore)
+	err = controller.Register(mgr, keyStore, apStore)
 	if err != nil {
 		log.Error(nil, err, "Unable to register controllers")
 		os.Exit(1)

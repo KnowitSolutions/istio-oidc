@@ -13,9 +13,13 @@ type config struct {
 }
 
 type controller struct {
-	IstioRootNamespace    string            `yaml:"IstioRootNamespace"`
+	IstioRootNamespace string `yaml:"IstioRootNamespace"`
+
 	EnvoyFilterNamePrefix string            `yaml:"EnvoyFilterNamePrefix"`
 	EnvoyFilterLabels     map[string]string `yaml:"EnvoyFilterLabels"`
+
+	TokenKeyNamespace string `yaml:"TokenKeyNamespace"`
+	TokenKeyName      string `yaml:"TokenKeyName"`
 }
 
 type service struct {
