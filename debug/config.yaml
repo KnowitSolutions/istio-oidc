@@ -1,9 +1,9 @@
 Controller:
-  TokenKeyNamespace: default
+  TokenKeyNamespace:  # TODO: Set namespace
 
 ExtAuthz:
   ClusterName: istio-keycloak
   Timeout: 1h
 
 Keycloak:
-  URL: http://keycloak.localhost
+  URL: # TODO: Set Keycloak URL
