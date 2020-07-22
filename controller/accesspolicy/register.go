@@ -110,6 +110,6 @@ type workerController struct {
 	controller.Controller
 }
 
-func (_ workerController) NeedLeaderElection() bool {
+func (workerController) NeedLeaderElection() bool {
 	return false
 }

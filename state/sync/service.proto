@@ -1,0 +1,25 @@
+syntax = "proto3";
+import "google/protobuf/timestamp.proto";
+
+package istio_keycloak.state.sync;
+option go_package = "istio-keycloak/state/sync";
+
+service Synchronize {
+    rpc Stream (stream Message) returns (stream Message);
+}
+
+message Message {
+    oneof message {
+        UpdateRequest update_request = 1;
+        Session session = 2;
+    }
+}
+
+message UpdateRequest {
+    uint64 version = 1;
+}
+
+message Session {
+    string refresh_token = 1;
+    google.protobuf.Timestamp expiry = 2;
+}

@@ -37,7 +37,8 @@ func (c *controller) normalize() {
 	if c.LeaderElectionNamespace == "" {
 		ns, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
 		if err != nil {
-			log.Error(nil, errors.New("missing leader election namespace"), "Failed loading config")
+			err = errors.New("missing leader election namespace")
+			log.Error(nil, err, "Failed loading config")
 			os.Exit(1)
 		}
 
@@ -51,7 +52,8 @@ func (c *controller) normalize() {
 	if c.TokenKeyNamespace == "" {
 		ns, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
 		if err != nil {
-			log.Error(nil, errors.New("missing token key namespace"), "Failed loading config")
+			err = errors.New("missing token key namespace")
+			log.Error(nil, err, "Failed loading config")
 			os.Exit(1)
 		}
 
@@ -64,6 +66,12 @@ func (c *controller) normalize() {
 }
 
 func (s *service) normalize() {
+	if s.Hostname == "" {
+		err := errors.New("missing service hostname")
+		log.Error(nil, err, "Failed loading config")
+		os.Exit(1)
+	}
+
 	if s.Address == "" {
 		s.Address = ":8080"
 	}
@@ -71,7 +79,8 @@ func (s *service) normalize() {
 
 func (ea *extAuthz) normalize() {
 	if ea.ClusterName == "" {
-		log.Error(nil, errors.New("missing cluster name"), "Failed loading config")
+		err := errors.New("missing cluster name")
+		log.Error(nil, err, "Failed loading config")
 		os.Exit(1)
 	}
 
@@ -94,7 +103,8 @@ func (s *sessions) normalize() {
 
 func (k *keycloak) normalize() {
 	if k.Url == "" {
-		log.Error(nil, errors.New("missing Keycloak URL"), "Failed loading config")
+		err := errors.New("missing Keycloak URL")
+		log.Error(nil, err, "Failed loading config")
 		os.Exit(1)
 	}
 }

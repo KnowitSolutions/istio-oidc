@@ -26,6 +26,7 @@ type controller struct {
 }
 
 type service struct {
+	Hostname string `yaml:"Hostname"`
 	Address string `yaml:"Address"`
 }
 
