@@ -10,13 +10,25 @@ service Synchronize {
 
 message Message {
     oneof message {
-        UpdateRequest update_request = 1;
-        Session session = 2;
+        Hello hello = 1;
+        Pull pull = 2;
+        Push push = 3;
     }
 }
 
-message UpdateRequest {
-    uint64 version = 1;
+message Hello {
+    string peer_id = 1;
+    map<string, uint64> serials = 2;
+}
+
+message Pull {
+    string peer_id = 1;
+    uint64 serial = 2;
+}
+
+message Push {
+    uint64 serial = 1;
+    Session session = 2;
 }
 
 message Session {

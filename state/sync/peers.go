@@ -10,6 +10,7 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"time"
 )
 
 type stream interface {
@@ -18,11 +19,13 @@ type stream interface {
 	Context() context.Context
 }
 
+type openFunc func(context.Context, *grpc.ClientConn) (stream, error)
+type talkFunc func(peer)
 type peers struct {
-	all     map[[net.IPv6len]byte]peer
-	mu      sync.Mutex
-	connect func(context.Context, *grpc.ClientConn) (stream, error)
-	listen  func(peer)
+	all  map[[net.IPv6len]byte]peer
+	mu   sync.Mutex
+	open openFunc
+	talk talkFunc
 }
 
 func ipToKey(ip net.IP) [net.IPv6len]byte {
@@ -31,32 +34,14 @@ func ipToKey(ip net.IP) [net.IPv6len]byte {
 	return key
 }
 
-func newPeers() peers {
-	return peers{all: map[[net.IPv6len]byte]peer{}}
-}
-
-func (p *peers) dial(ip net.IP) error {
-	ctx := context.Background()
-	addr := ip.String() + config.Service.Address
-	conn, err := grpc.DialContext(ctx, addr) // TODO: Maybe enable keepalive?
-	if err != nil {
-		err = errors.Wrap(err, "", "peer", addr)
-		return err
+func newPeers(open openFunc, talk talkFunc) *peers {
+	peers := peers{
+		all:  map[[net.IPv6len]byte]peer{},
+		open: open,
+		talk: talk,
 	}
-
-	stream, err := p.connect(ctx, conn)
-	if err != nil {
-		err = errors.Wrap(err, "", "peer", addr)
-		return err
-	}
-
-	peer, err := p.add(stream)
-	if err != nil {
-		return errors.Wrap(err, "", "peer", addr)
-	}
-
-	go func() { p.listen(peer); _ = conn.Close() }()
-	return nil
+	go background(&peers)
+	return &peers
 }
 
 func (p *peers) add(stream stream) (peer, error) {
@@ -85,19 +70,21 @@ func (p *peers) add(stream stream) (peer, error) {
 	}
 }
 
-func (p *peers) remove(peer *peer) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	delete(p.all, ipToKey(peer.ip))
-}
-
 func (p *peers) send(msg *Message) {
 	for _, peer := range p.all {
 		go peer.send(msg)
 	}
 }
 
-func (p *peers) refreshPeers() {
+func background(peers *peers) {
+	ch := time.Tick(10 * time.Second) // TODO: Configurable
+	for {
+		<-ch
+		peers.refresh()
+	}
+}
+
+func (p *peers) refresh() {
 	ctx := context.Background()
 	ownIp, peerIps, err := getIps(ctx)
 	if err != nil {
@@ -121,7 +108,7 @@ func (p *peers) refreshPeers() {
 			continue
 		}
 
-		err = p.dial(peerIp)
+		err = connect(p, peerIp)
 		if err != nil {
 			log.Error(ctx, err, "Failed connecting to peer")
 		}
@@ -169,6 +156,32 @@ func isOwnIp(ip net.IPAddr, own []net.Addr) bool {
 	return false
 }
 
+func connect(peers *peers, ip net.IP) error {
+	ctx := context.Background()
+
+	idx := strings.LastIndexByte(config.Service.Address, ':')
+	addr := ip.String() + config.Service.Address[idx:]
+	conn, err := grpc.DialContext(ctx, addr) // TODO: Maybe enable keepalive?
+	if err != nil {
+		err = errors.Wrap(err, "", "peer", addr)
+		return err
+	}
+
+	stream, err := peers.open(ctx, conn)
+	if err != nil {
+		err = errors.Wrap(err, "", "peer", addr)
+		return err
+	}
+
+	peer, err := peers.add(stream)
+	if err != nil {
+		return errors.Wrap(err, "", "peer", addr)
+	}
+
+	go func() { peers.talk(peer); _ = conn.Close() }()
+	return nil
+}
+
 type peer struct {
 	active bool
 	ip     net.IP
@@ -186,7 +199,7 @@ func (p *peer) send(msg *Message) bool {
 	if err != nil {
 		err = errors.Wrap(err, "", "peer", p.ip.String())
 		log.Error(nil, err, "Lost connection")
-		p.peers.remove(p)
+		remove(p)
 		return false
 	} else {
 		return true
@@ -201,9 +214,15 @@ func (p *peer) recv() *Message {
 	if err != nil {
 		err = errors.Wrap(err, "", "peer", p.ip.String())
 		log.Error(nil, err, "Lost connection")
-		p.peers.remove(p)
+		remove(p)
 		return nil
 	} else {
 		return msg
 	}
+}
+
+func remove(peer *peer) {
+	peer.peers.mu.Lock()
+	defer peer.peers.mu.Unlock()
+	delete(peer.peers.all, ipToKey(peer.ip))
 }
