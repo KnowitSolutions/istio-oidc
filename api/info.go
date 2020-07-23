@@ -2,7 +2,6 @@
 // +versionName=v1
 package api
 
-//go:generate go get sigs.k8s.io/controller-tools/cmd/controller-gen
 //go:generate controller-gen object
 //go:generate controller-gen crd output:dir=.
 

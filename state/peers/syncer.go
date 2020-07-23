@@ -11,8 +11,6 @@ import (
 	"reflect"
 )
 
-//go:generate go get google.golang.org/protobuf/cmd/protoc-gen-go
-//go:generate go get google.golang.org/grpc/cmd/protoc-gen-go-grpc
 //go:generate protoc --go_out=paths=source_relative:. --go-grpc_out=paths=source_relative:. service.proto
 
 type Syncer interface {

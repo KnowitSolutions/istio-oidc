@@ -18,7 +18,7 @@ require (
 	golang.org/x/sys v0.0.0-20200523222454-059865788121 // indirect
 	google.golang.org/genproto v0.0.0-20200528191852-705c0b31589b
 	google.golang.org/grpc v1.29.1
-	google.golang.org/grpc/cmd/protoc-gen-go-grpc v0.0.0-20200723160120-cee815dbe38c // indirect
+	google.golang.org/grpc/cmd/protoc-gen-go-grpc v0.0.0-20200723182653-9106c3fff523
 	google.golang.org/protobuf v1.25.0
 	gopkg.in/square/go-jose.v2 v2.5.1
 	gopkg.in/yaml.v2 v2.3.0 // indirect
@@ -30,5 +30,5 @@ require (
 	k8s.io/apimachinery v0.18.3
 	k8s.io/utils v0.0.0-20200529193333-24a76e807f40 // indirect
 	sigs.k8s.io/controller-runtime v0.6.0
-	sigs.k8s.io/controller-tools v0.3.0 // indirect
+	sigs.k8s.io/controller-tools v0.3.0
 )
