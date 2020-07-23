@@ -1,9 +1,6 @@
-package sync
+package peers
 
-import (
-	"istio-keycloak/state"
-	"sync"
-)
+import "sync"
 
 type versions struct {
 	vers map[string]uint64
@@ -11,7 +8,7 @@ type versions struct {
 }
 
 type StampedSession struct {
-	state.Session
+	*Session
 	Version
 }
 
@@ -24,7 +21,7 @@ func newVersions() versions {
 	return versions{vers: make(map[string]uint64)}
 }
 
-func (s *syncer) Stamp(sess state.Session) StampedSession {
+func (s *syncer) Stamp(sess *Session) StampedSession {
 	s.inc(s.id)
 	ver := Version{s.id, s.ver(s.id)}
 	return StampedSession{Session: sess, Version: ver}

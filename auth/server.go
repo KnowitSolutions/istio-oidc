@@ -18,10 +18,6 @@ func (srv *Server) V2() *ServerV2 {
 	return &ServerV2{Server: srv}
 }
 
-func (srv *Server) Start() {
-	srv.SessionStore.Start()
-}
-
 func (srv *Server) newRequest(address, cookies string, metadata map[string]string) (*request, error) {
 	parsed, err := url.Parse(address)
 	if err != nil {

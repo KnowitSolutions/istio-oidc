@@ -18,7 +18,7 @@ require (
 	golang.org/x/sys v0.0.0-20200523222454-059865788121 // indirect
 	google.golang.org/genproto v0.0.0-20200528191852-705c0b31589b
 	google.golang.org/grpc v1.29.1
-	google.golang.org/grpc/cmd/protoc-gen-go-grpc v0.0.0-20200721210703-a5a36bd3f0bb // indirect
+	google.golang.org/grpc/cmd/protoc-gen-go-grpc v0.0.0-20200723160120-cee815dbe38c // indirect
 	google.golang.org/protobuf v1.25.0
 	gopkg.in/square/go-jose.v2 v2.5.1
 	gopkg.in/yaml.v2 v2.3.0 // indirect

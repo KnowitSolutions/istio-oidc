@@ -2,9 +2,9 @@ syntax = "proto3";
 import "google/protobuf/timestamp.proto";
 
 package istio_keycloak.state.sync;
-option go_package = "istio-keycloak/state/sync";
+option go_package = "istio-keycloak/state/peers";
 
-service Synchronize {
+service Peering {
     rpc Stream (stream Message) returns (stream Message);
 }
 
@@ -32,6 +32,7 @@ message Push {
 }
 
 message Session {
-    string refresh_token = 1;
-    google.protobuf.Timestamp expiry = 2;
+    bytes hash = 1;
+    string refresh_token = 2;
+    google.protobuf.Timestamp expiry = 3;
 }

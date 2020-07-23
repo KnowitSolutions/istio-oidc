@@ -1,4 +1,4 @@
-package sync
+package peers
 
 import (
 	"context"
@@ -7,7 +7,6 @@ import (
 	"google.golang.org/grpc/status"
 	"istio-keycloak/log"
 	"istio-keycloak/log/errors"
-	"istio-keycloak/state"
 	"os"
 	"reflect"
 )
@@ -17,15 +16,15 @@ import (
 //go:generate protoc --go_out=paths=source_relative:. --go-grpc_out=paths=source_relative:. service.proto
 
 type Syncer interface {
-	SynchronizeServer
-	Stamp(state.Session) StampedSession
+	Stamp(*Session) StampedSession
 	Sync(StampedSession)
+	Server() PeeringServer
 }
 
 type PushFunc func(StampedSession)
 type PullFunc func(Version) <-chan StampedSession
 type syncer struct {
-	UnimplementedSynchronizeServer
+	UnimplementedPeeringServer
 	versions
 	peers *peerSet
 	push  PushFunc
@@ -47,10 +46,10 @@ func NewSyncer(push PushFunc, pull PullFunc) (Syncer, error) {
 }
 
 func (s *syncer) Sync(stamped StampedSession) {
-	s.peers.send(push(toProto(stamped.Session), stamped.Serial))
+	s.peers.send(push(stamped.Session, stamped.Serial))
 }
 
-func (s *syncer) Stream(stream Synchronize_StreamServer) error {
+func (s *syncer) Stream(stream Peering_StreamServer) error {
 	peer, err := s.peers.add(stream)
 	if err != nil {
 		return status.Error(codes.PermissionDenied, err.Error())
@@ -60,8 +59,12 @@ func (s *syncer) Stream(stream Synchronize_StreamServer) error {
 	return nil
 }
 
-func open(ctx context.Context, conn *grpc.ClientConn) (Synchronize_StreamClient, error) {
-	client := NewSynchronizeClient(conn)
+func (s *syncer) Server() PeeringServer {
+	return s
+}
+
+func open(ctx context.Context, conn *grpc.ClientConn) (Peering_StreamClient, error) {
+	client := NewPeeringClient(conn)
 	stream, err := client.Stream(ctx)
 	if err != nil {
 		return nil, err
@@ -108,9 +111,8 @@ func (s *syncer) talk(peer *peer) {
 			}
 
 		case *Message_Push:
-			sess := fromProto(msg.Push.Session)
 			ver := Version{id, msg.Push.Serial}
-			stamped := StampedSession{sess, ver}
+			stamped := StampedSession{msg.Push.Session, ver}
 
 			s.inc(id)
 			s.push(stamped)

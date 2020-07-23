@@ -10,6 +10,7 @@ import (
 	"istio-keycloak/log"
 	"istio-keycloak/log/errors"
 	"istio-keycloak/state"
+	"istio-keycloak/state/peers"
 	"istio-keycloak/telemetry"
 	"k8s.io/apimachinery/pkg/runtime"
 	"net"
@@ -27,9 +28,14 @@ func main() {
 
 	keyStore := state.NewKeyStore()
 	apStore := state.NewAccessPolicyStore()
+	sessStore, err := state.NewSessionStore()
+	if err != nil {
+		log.Error(nil, err, "Failed creating stores")
+		os.Exit(1)
+	}
 
 	go startCtrl(keyStore, apStore)
-	go startGrpc(keyStore, apStore)
+	go startGrpc(keyStore, apStore, sessStore)
 	go startTelemetry()
 	select {}
 }
@@ -71,7 +77,7 @@ func startCtrl(keyStore state.KeyStore, apStore state.AccessPolicyStore) {
 	}
 }
 
-func startGrpc(keyStore state.KeyStore, apStore state.AccessPolicyStore) {
+func startGrpc(keyStore state.KeyStore, apStore state.AccessPolicyStore, sessStore state.SessionStore) {
 	lis, err := net.Listen("tcp", config.Service.Address)
 	if err != nil {
 		err = errors.Wrap(err, "", "address", config.Service.Address)
@@ -80,7 +86,8 @@ func startGrpc(keyStore state.KeyStore, apStore state.AccessPolicyStore) {
 	}
 
 	srv := grpc.NewServer()
-	startExtAuthz(srv, keyStore, apStore)
+	startExtAuthz(srv, keyStore, apStore, sessStore)
+	startPeering(srv, sessStore.Server())
 
 	err = srv.Serve(lis)
 	if err != nil {
@@ -89,15 +96,18 @@ func startGrpc(keyStore state.KeyStore, apStore state.AccessPolicyStore) {
 	}
 }
 
-func startExtAuthz(srv *grpc.Server, keyStore state.KeyStore, apStore state.AccessPolicyStore) {
+func startExtAuthz(srv *grpc.Server, keyStore state.KeyStore, apStore state.AccessPolicyStore, sessStore state.SessionStore) {
 	extAuth := auth.Server{
 		KeyStore:          keyStore,
 		AccessPolicyStore: apStore,
-		SessionStore:      state.NewSessionStore(),
+		SessionStore:      sessStore,
 	}
-	extAuth.Start()
 
 	authv2.RegisterAuthorizationServer(srv, extAuth.V2())
+}
+
+func startPeering(srv *grpc.Server, peering peers.PeeringServer) {
+	peers.RegisterPeeringServer(srv, peering)
 }
 
 func startTelemetry() {

@@ -1,4 +1,4 @@
-package sync
+package peers
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 )
 
 type peerKey [net.IPv6len]byte
-type openFunc func(context.Context, *grpc.ClientConn) (Synchronize_StreamClient, error)
+type openFunc func(context.Context, *grpc.ClientConn) (Peering_StreamClient, error)
 type talkFunc func(*peer)
 type peerSet struct {
 	set  map[peerKey]*peer

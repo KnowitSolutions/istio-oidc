@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"crypto/sha512"
 	"golang.org/x/oauth2"
 	"istio-keycloak/log"
 	"istio-keycloak/log/errors"
@@ -72,9 +73,9 @@ func (srv *Server) isAuthenticated(ctx context.Context, req *request) bool {
 		return false
 	}
 
-	var ok bool
-	req.session, ok = srv.GetSession(token)
-	return ok
+	hash := sha512.Sum512([]byte(token))
+	req.session = srv.GetSession(hash)
+	return req.session != nil
 }
 
 func (srv *Server) startOidc(ctx context.Context, req *request) *response {
@@ -159,11 +160,11 @@ func (srv *Server) setToken(ctx context.Context, req *request, token *oauth2.Tok
 		return &response{status: http.StatusInternalServerError}
 	}
 
-	srv.SetSession(tok, &state.Session{
+	srv.SetSession(state.Session{
+		Hash:         sha512.Sum512([]byte(tok)),
 		RefreshToken: token.RefreshToken,
 		Expiry:       token.Expiry,
 	})
-	// TODO: Gossip
 
 	cookie := http.Cookie{
 		Name:     bearerCookie,
