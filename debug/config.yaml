@@ -2,6 +2,9 @@ Controller:
   LeaderElectionNamespace: # TODO: Set namespace
   TokenKeyNamespace: # TODO: Set namespace
 
+Service:
+  Hostname: # TODO: Set hostname
+
 ExtAuthz:
   ClusterName: istio-oidc
   Timeout: 1h

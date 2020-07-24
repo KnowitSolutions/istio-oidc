@@ -15,7 +15,8 @@ RUN go generate ./...
 RUN go build -trimpath -tags osusergo,netgo -ldflags="-w -s" -o istio-oidc
 
 FROM scratch
-ENV PATH /
+WORKDIR /app
+ENV PATH /app
 
 COPY --from=builder /build/istio-oidc .
 ENTRYPOINT ["istio-oidc"]
