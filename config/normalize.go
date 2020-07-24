@@ -1,9 +1,9 @@
 package config
 
 import (
+	"github.com/KnowitSolutions/istio-oidc/log"
+	"github.com/KnowitSolutions/istio-oidc/log/errors"
 	"io/ioutil"
-	"istio-keycloak/log"
-	"istio-keycloak/log/errors"
 	"os"
 	"strings"
 	"time"
@@ -30,7 +30,7 @@ func (c *controller) normalize() {
 
 	if c.EnvoyFilterLabels == nil {
 		c.EnvoyFilterLabels = map[string]string{
-			"istio-keycloak": "ext-authz",
+			"istio-oidc": "ext-authz",
 		}
 	}
 
@@ -46,7 +46,7 @@ func (c *controller) normalize() {
 	}
 
 	if c.LeaderElectionName == "" {
-		c.LeaderElectionName = "istio-keycloak"
+		c.LeaderElectionName = "istio-oidc"
 	}
 
 	if c.TokenKeyNamespace == "" {
@@ -61,7 +61,7 @@ func (c *controller) normalize() {
 	}
 
 	if c.TokenKeyName == "" {
-		c.TokenKeyName = "istio-keycloak"
+		c.TokenKeyName = "istio-oidc"
 	}
 }
 

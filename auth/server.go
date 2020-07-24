@@ -1,9 +1,9 @@
 package auth
 
 import (
-	"istio-keycloak/log/errors"
-	"istio-keycloak/state"
-	"istio-keycloak/state/accesspolicy"
+	"github.com/KnowitSolutions/istio-oidc/log/errors"
+	"github.com/KnowitSolutions/istio-oidc/state"
+	"github.com/KnowitSolutions/istio-oidc/state/accesspolicy"
 	"net/http"
 	"net/url"
 )

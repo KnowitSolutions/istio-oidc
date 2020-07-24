@@ -1,11 +1,11 @@
 package accesspolicy
 
 import (
-	"istio-keycloak/api"
-	"istio-keycloak/config"
-	"istio-keycloak/controller/predicate"
-	"istio-keycloak/log/errors"
-	"istio-keycloak/state"
+	"github.com/KnowitSolutions/istio-oidc/api"
+	"github.com/KnowitSolutions/istio-oidc/config"
+	"github.com/KnowitSolutions/istio-oidc/controller/predicate"
+	"github.com/KnowitSolutions/istio-oidc/log/errors"
+	"github.com/KnowitSolutions/istio-oidc/state"
 	istionetworking "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	core "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"

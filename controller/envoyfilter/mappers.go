@@ -2,9 +2,9 @@ package envoyfilter
 
 import (
 	"context"
-	"istio-keycloak/api"
-	"istio-keycloak/config"
-	"istio-keycloak/log"
+	"github.com/KnowitSolutions/istio-oidc/api"
+	"github.com/KnowitSolutions/istio-oidc/config"
+	"github.com/KnowitSolutions/istio-oidc/log"
 	istionetworking "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	"k8s.io/apimachinery/pkg/types"
 	"reflect"

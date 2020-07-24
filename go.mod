@@ -1,4 +1,4 @@
-module istio-keycloak
+module github.com/KnowitSolutions/istio-oidc
 
 go 1.14
 

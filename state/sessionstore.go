@@ -3,11 +3,11 @@ package state
 import (
 	"container/list"
 	"crypto/sha512"
+	"github.com/KnowitSolutions/istio-oidc/config"
+	"github.com/KnowitSolutions/istio-oidc/log"
+	"github.com/KnowitSolutions/istio-oidc/log/errors"
+	"github.com/KnowitSolutions/istio-oidc/state/peers"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"istio-keycloak/config"
-	"istio-keycloak/log"
-	"istio-keycloak/log/errors"
-	"istio-keycloak/state/peers"
 	"sync"
 	"time"
 )

@@ -2,10 +2,10 @@ package accesspolicy
 
 import (
 	"context"
-	"istio-keycloak/api"
-	"istio-keycloak/config"
-	"istio-keycloak/log"
-	"istio-keycloak/log/errors"
+	"github.com/KnowitSolutions/istio-oidc/api"
+	"github.com/KnowitSolutions/istio-oidc/config"
+	"github.com/KnowitSolutions/istio-oidc/log"
+	"github.com/KnowitSolutions/istio-oidc/log/errors"
 	istionetworking "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -14,7 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-const finalizer = "finalizer.istio-keycloak"
+const finalizer = "finalizer.istio-oidc"
 
 type leaderReconciler struct {
 	client.Client

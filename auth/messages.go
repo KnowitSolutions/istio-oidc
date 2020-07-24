@@ -1,9 +1,9 @@
 package auth
 
 import (
+	"github.com/KnowitSolutions/istio-oidc/state"
+	"github.com/KnowitSolutions/istio-oidc/state/accesspolicy"
 	"gopkg.in/square/go-jose.v2"
-	"istio-keycloak/state"
-	"istio-keycloak/state/accesspolicy"
 	"net/http"
 	"net/url"
 )

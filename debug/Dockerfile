@@ -13,13 +13,13 @@ RUN go install \
 
 COPY . .
 RUN go generate ./...
-RUN go build -trimpath -tags osusergo,netgo -gcflags="all=-N -l" -o istio-keycloak
+RUN go build -trimpath -tags osusergo,netgo -gcflags="all=-N -l" -o istio-oidc
 
 FROM debian:buster
 WORKDIR /app
 ENV PATH /app:"$PATH"
 
 COPY --from=builder /go/bin/dlv .
-COPY --from=builder /build/istio-keycloak .
-CMD ["dlv", "--listen=:2345", "--headless", "--api-version=2", "exec", "istio-keycloak"]
+COPY --from=builder /build/istio-oidc .
+CMD ["dlv", "--listen=:2345", "--headless", "--api-version=2", "exec", "istio-oidc"]
 EXPOSE 8080 8081 2345

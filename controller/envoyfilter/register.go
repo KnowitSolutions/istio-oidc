@@ -1,10 +1,10 @@
 package envoyfilter
 
 import (
-	"istio-keycloak/api"
-	"istio-keycloak/config"
-	"istio-keycloak/controller/predicate"
-	"istio-keycloak/log/errors"
+	"github.com/KnowitSolutions/istio-oidc/api"
+	"github.com/KnowitSolutions/istio-oidc/config"
+	"github.com/KnowitSolutions/istio-oidc/controller/predicate"
+	"github.com/KnowitSolutions/istio-oidc/log/errors"
 	istionetworking "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller"

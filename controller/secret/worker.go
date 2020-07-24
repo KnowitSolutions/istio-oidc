@@ -2,9 +2,9 @@ package secret
 
 import (
 	"context"
-	"istio-keycloak/log"
-	"istio-keycloak/log/errors"
-	"istio-keycloak/state"
+	"github.com/KnowitSolutions/istio-oidc/log"
+	"github.com/KnowitSolutions/istio-oidc/log/errors"
+	"github.com/KnowitSolutions/istio-oidc/state"
 	core "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"

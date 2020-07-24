@@ -2,11 +2,11 @@ package envoyfilter
 
 import (
 	"context"
-	"istio-keycloak/api"
-	"istio-keycloak/config"
-	"istio-keycloak/log"
-	"istio-keycloak/log/errors"
-	"istio-keycloak/state/accesspolicy"
+	"github.com/KnowitSolutions/istio-oidc/api"
+	"github.com/KnowitSolutions/istio-oidc/config"
+	"github.com/KnowitSolutions/istio-oidc/log"
+	"github.com/KnowitSolutions/istio-oidc/log/errors"
+	"github.com/KnowitSolutions/istio-oidc/state/accesspolicy"
 	istionetworking "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"reflect"

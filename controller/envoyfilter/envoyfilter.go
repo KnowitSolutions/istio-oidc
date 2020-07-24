@@ -2,8 +2,8 @@ package envoyfilter
 
 import (
 	"fmt"
-	"istio-keycloak/config"
-	"istio-keycloak/state/accesspolicy"
+	"github.com/KnowitSolutions/istio-oidc/config"
+	"github.com/KnowitSolutions/istio-oidc/state/accesspolicy"
 	istionetworkingapi "istio.io/api/networking/v1alpha3"
 	istionetworking "istio.io/client-go/pkg/apis/networking/v1alpha3"
 )

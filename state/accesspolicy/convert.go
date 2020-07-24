@@ -2,8 +2,8 @@ package accesspolicy
 
 import (
 	"fmt"
-	"istio-keycloak/api"
-	"istio-keycloak/log/errors"
+	"github.com/KnowitSolutions/istio-oidc/api"
+	"github.com/KnowitSolutions/istio-oidc/log/errors"
 	core "k8s.io/api/core/v1"
 	"net/url"
 )

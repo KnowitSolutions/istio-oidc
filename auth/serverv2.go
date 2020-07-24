@@ -3,13 +3,13 @@ package auth
 import (
 	"context"
 	"fmt"
+	"github.com/KnowitSolutions/istio-oidc/log"
 	core "github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
 	auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v2"
 	types "github.com/envoyproxy/go-control-plane/envoy/type"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"google.golang.org/genproto/googleapis/rpc/code"
 	"google.golang.org/genproto/googleapis/rpc/status"
-	"istio-keycloak/log"
 	"net/http"
 )
 

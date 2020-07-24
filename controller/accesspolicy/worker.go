@@ -2,11 +2,11 @@ package accesspolicy
 
 import (
 	"context"
-	"istio-keycloak/api"
-	"istio-keycloak/log"
-	"istio-keycloak/log/errors"
-	"istio-keycloak/state"
-	"istio-keycloak/state/accesspolicy"
+	"github.com/KnowitSolutions/istio-oidc/api"
+	"github.com/KnowitSolutions/istio-oidc/log"
+	"github.com/KnowitSolutions/istio-oidc/log/errors"
+	"github.com/KnowitSolutions/istio-oidc/state"
+	"github.com/KnowitSolutions/istio-oidc/state/accesspolicy"
 	core "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"

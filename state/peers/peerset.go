@@ -2,9 +2,9 @@ package peers
 
 import (
 	"context"
+	"github.com/KnowitSolutions/istio-oidc/log/errors"
 	"google.golang.org/grpc"
 	grpcpeer "google.golang.org/grpc/peer"
-	"istio-keycloak/log/errors"
 	"net"
 	"sync"
 )

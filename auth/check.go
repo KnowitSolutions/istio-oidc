@@ -3,10 +3,10 @@ package auth
 import (
 	"context"
 	"crypto/sha512"
+	"github.com/KnowitSolutions/istio-oidc/log"
+	"github.com/KnowitSolutions/istio-oidc/log/errors"
+	"github.com/KnowitSolutions/istio-oidc/state"
 	"golang.org/x/oauth2"
-	"istio-keycloak/log"
-	"istio-keycloak/log/errors"
-	"istio-keycloak/state"
 	"net/http"
 	"strings"
 	"time"

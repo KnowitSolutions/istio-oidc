@@ -2,8 +2,8 @@ package state
 
 import (
 	"context"
-	"istio-keycloak/log"
-	"istio-keycloak/state/accesspolicy"
+	"github.com/KnowitSolutions/istio-oidc/log"
+	"github.com/KnowitSolutions/istio-oidc/state/accesspolicy"
 	"sync"
 )
 

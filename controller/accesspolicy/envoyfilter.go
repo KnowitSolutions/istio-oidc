@@ -1,8 +1,8 @@
 package accesspolicy
 
 import (
-	"istio-keycloak/api"
-	"istio-keycloak/config"
+	"github.com/KnowitSolutions/istio-oidc/api"
+	"github.com/KnowitSolutions/istio-oidc/config"
 	istionetworkingapi "istio.io/api/networking/v1alpha3"
 	istionetworking "istio.io/client-go/pkg/apis/networking/v1alpha3"
 )

@@ -1,9 +1,9 @@
 package auth
 
 import (
+	"github.com/KnowitSolutions/istio-oidc/log/errors"
 	"gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/jwt"
-	"istio-keycloak/log/errors"
 	"time"
 )
 

@@ -1,8 +1,8 @@
 syntax = "proto3";
 import "google/protobuf/timestamp.proto";
 
-package istio_keycloak.state.sync;
-option go_package = "istio-keycloak/state/peers";
+package github.com.KnowitSolutions.istio_oidc.state.sync;
+option go_package = "github.com/KnowitSolutions/istio-oidc/state/peers";
 
 service Peering {
     rpc Stream (stream Message) returns (stream Message);

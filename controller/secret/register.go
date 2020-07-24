@@ -1,10 +1,10 @@
 package secret
 
 import (
-	"istio-keycloak/config"
-	"istio-keycloak/controller/predicate"
-	"istio-keycloak/log/errors"
-	"istio-keycloak/state"
+	"github.com/KnowitSolutions/istio-oidc/config"
+	"github.com/KnowitSolutions/istio-oidc/controller/predicate"
+	"github.com/KnowitSolutions/istio-oidc/log/errors"
+	"github.com/KnowitSolutions/istio-oidc/state"
 	core "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller"

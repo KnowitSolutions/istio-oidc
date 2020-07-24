@@ -12,11 +12,11 @@ RUN go install \
 
 COPY . .
 RUN go generate ./...
-RUN go build -trimpath -tags osusergo,netgo -ldflags="-w -s" -o istio-keycloak
+RUN go build -trimpath -tags osusergo,netgo -ldflags="-w -s" -o istio-oidc
 
 FROM scratch
 ENV PATH /
 
-COPY --from=builder /build/istio-keycloak .
-ENTRYPOINT ["istio-keycloak"]
+COPY --from=builder /build/istio-oidc .
+ENTRYPOINT ["istio-oidc"]
 EXPOSE 8080 8081

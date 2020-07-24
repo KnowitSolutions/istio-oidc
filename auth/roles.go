@@ -1,6 +1,6 @@
 package auth
 
-import "istio-keycloak/state/accesspolicy"
+import "github.com/KnowitSolutions/istio-oidc/state/accesspolicy"
 
 func hasRoles(required accesspolicy.Roles, provided accesspolicy.Roles) bool {
 	found := make(map[string]bool, len(provided))

@@ -1,10 +1,10 @@
 package controller
 
 import (
-	"istio-keycloak/controller/accesspolicy"
-	"istio-keycloak/controller/envoyfilter"
-	"istio-keycloak/controller/secret"
-	"istio-keycloak/state"
+	"github.com/KnowitSolutions/istio-oidc/controller/accesspolicy"
+	"github.com/KnowitSolutions/istio-oidc/controller/envoyfilter"
+	"github.com/KnowitSolutions/istio-oidc/controller/secret"
+	"github.com/KnowitSolutions/istio-oidc/state"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
