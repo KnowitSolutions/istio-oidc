@@ -72,6 +72,7 @@ func open(ctx context.Context, conn *grpc.ClientConn) (Peering_StreamClient, err
 }
 
 func (s *syncer) talk(peer *peer) {
+	// TODO: peer.stream is nil when we arrive here
 	ctx := peer.stream.Context()
 	peer.send <- hello(s.id, s.allVers())
 

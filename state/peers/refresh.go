@@ -103,7 +103,7 @@ func connect(peers *peerSet, ip net.IP) error {
 
 	idx := strings.LastIndexByte(config.Service.Address, ':')
 	addr := ip.String() + config.Service.Address[idx:]
-	conn, err := grpc.DialContext(ctx, addr) // TODO: Maybe enable keepalive?
+	conn, err := grpc.DialContext(ctx, addr, grpc.WithInsecure()) // TODO: Maybe enable keepalive?
 	if err != nil {
 		err = errors.Wrap(err, "", "peer", addr)
 		return err
