@@ -90,7 +90,7 @@ func getIps(ctx context.Context) (net.IP, []net.IP, error) {
 
 func isOwnIp(ip net.IPAddr, own []net.Addr) bool {
 	for _, addr := range own {
-		own := addr.(*net.IPAddr)
+		own := addr.(*net.IPNet)
 		if own != nil && ip.IP.Equal(own.IP) {
 			return true
 		}

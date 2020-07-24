@@ -24,6 +24,7 @@ metadata:
   namespace: istio-oidc
   name: istio-oidc
 spec:
+  clusterIP: None
   selector:
     app: istio-oidc
   ports:
