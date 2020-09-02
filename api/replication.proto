@@ -1,0 +1,53 @@
+syntax = "proto3";
+import "google/protobuf/timestamp.proto";
+
+package github.com.KnowitSolutions.istio_oidc.api;
+option go_package = "github.com/KnowitSolutions/istio-oidc/api";
+
+service Replication {
+    rpc Handshake (HandshakeRequest) returns (HandshakeResponse);
+    rpc SetSession (SetSessionRequest) returns (SetSessionResponse);
+    rpc StreamSessions (StreamSessionsRequest) returns (stream StreamSessionsResponse);
+}
+
+message HandshakeRequest {
+    string peer_id = 1;
+    string peer_endpoint = 2;
+    repeated Stamp latest = 3;
+}
+
+message HandshakeResponse {
+    string peer_id = 1;
+    string peer_endpoint = 2;
+    repeated Stamp latest = 3;
+}
+
+message SetSessionRequest {
+    string peer_id = 1;
+    Session session = 2;
+    Stamp stamp = 3;
+}
+
+message SetSessionResponse {
+}
+
+message StreamSessionsRequest {
+    string peer_id = 1;
+    repeated Stamp from = 2;
+}
+
+message StreamSessionsResponse {
+    Session session = 1;
+    Stamp stamp = 2;
+}
+
+message Session {
+    string id = 1;
+    string refresh_token = 2;
+    google.protobuf.Timestamp expiry = 3;
+}
+
+message Stamp {
+    string peer_id = 1;
+    uint64 serial = 2;
+}

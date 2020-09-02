@@ -2,13 +2,14 @@ package main
 
 import (
 	"flag"
+	"github.com/KnowitSolutions/istio-oidc/api"
 	"github.com/KnowitSolutions/istio-oidc/auth"
 	"github.com/KnowitSolutions/istio-oidc/config"
 	"github.com/KnowitSolutions/istio-oidc/controller"
 	"github.com/KnowitSolutions/istio-oidc/log"
 	"github.com/KnowitSolutions/istio-oidc/log/errors"
+	"github.com/KnowitSolutions/istio-oidc/replication"
 	"github.com/KnowitSolutions/istio-oidc/state"
-	"github.com/KnowitSolutions/istio-oidc/state/peers"
 	"github.com/KnowitSolutions/istio-oidc/telemetry"
 	authv2 "github.com/envoyproxy/go-control-plane/envoy/service/auth/v2"
 	"google.golang.org/grpc"
@@ -26,21 +27,35 @@ func main() {
 	flag.Parse()
 	config.Load(*cfg)
 
+	id, err := replication.NewPeerId()
+	if err != nil {
+		log.Error(nil, err, "Failed creating peer ID")
+		os.Exit(1)
+	}
+
 	keyStore := state.NewKeyStore()
 	apStore := state.NewAccessPolicyStore()
-	sessStore, err := state.NewSessionStore()
+	sessStore, err := state.NewSessionStore(id)
 	if err != nil {
 		log.Error(nil, err, "Failed creating stores")
 		os.Exit(1)
 	}
 
+	self := replication.NewSelf(id, sessStore)
+	peers := replication.NewPeers()
+
+	init := make(chan struct{})
+
 	go startCtrl(keyStore, apStore)
-	go startGrpc(keyStore, apStore, sessStore)
-	go startTelemetry()
+	go startGrpc(keyStore, apStore, sessStore, self, peers, init)
+	go startTelemetry(init)
 	select {}
 }
 
-func startCtrl(keyStore state.KeyStore, apStore state.AccessPolicyStore) {
+func startCtrl(
+	keyStore state.KeyStore,
+	apStore state.AccessPolicyStore,
+) {
 	ctrl.SetLogger(log.Shim)
 
 	cfg, err := ctrl.GetConfig()
@@ -77,7 +92,14 @@ func startCtrl(keyStore state.KeyStore, apStore state.AccessPolicyStore) {
 	}
 }
 
-func startGrpc(keyStore state.KeyStore, apStore state.AccessPolicyStore, sessStore state.SessionStore) {
+func startGrpc(
+	keyStore state.KeyStore,
+	apStore state.AccessPolicyStore,
+	sessStore state.SessionStore,
+	self *replication.Self,
+	peers *replication.Peers,
+	init chan<- struct{},
+) {
 	lis, err := net.Listen("tcp", config.Service.Address)
 	if err != nil {
 		err = errors.Wrap(err, "", "address", config.Service.Address)
@@ -86,8 +108,8 @@ func startGrpc(keyStore state.KeyStore, apStore state.AccessPolicyStore, sessSto
 	}
 
 	srv := grpc.NewServer()
-	startExtAuthz(srv, keyStore, apStore, sessStore)
-	startPeering(srv, sessStore.Server())
+	startExtAuthz(srv, keyStore, apStore, sessStore, self, peers)
+	startReplication(srv, self, peers, init)
 
 	err = srv.Serve(lis)
 	if err != nil {
@@ -96,25 +118,42 @@ func startGrpc(keyStore state.KeyStore, apStore state.AccessPolicyStore, sessSto
 	}
 }
 
-func startExtAuthz(srv *grpc.Server, keyStore state.KeyStore, apStore state.AccessPolicyStore, sessStore state.SessionStore) {
+func startExtAuthz(
+	srv *grpc.Server,
+	keyStore state.KeyStore,
+	apStore state.AccessPolicyStore,
+	sessStore state.SessionStore,
+	self *replication.Self,
+	peers *replication.Peers,
+) {
 	extAuth := auth.Server{
 		KeyStore:          keyStore,
 		AccessPolicyStore: apStore,
 		SessionStore:      sessStore,
+		Client:            replication.Client{Self: self, Peers: peers},
 	}
 
 	authv2.RegisterAuthorizationServer(srv, extAuth.V2())
 }
 
-func startPeering(srv *grpc.Server, peering peers.PeeringServer) {
-	peers.RegisterPeeringServer(srv, peering)
+func startReplication(
+	srv *grpc.Server,
+	self *replication.Self,
+	peers *replication.Peers,
+	init chan<- struct{},
+) {
+	repl := replication.Server{Self: self, Peers: peers}
+	replication.NewWorker(self, peers, init)
+	api.RegisterReplicationServer(srv, &repl)
 }
 
-func startTelemetry() {
+func startTelemetry(
+	init <-chan struct{},
+) {
 	mux := http.NewServeMux()
 	srv := http.Server{Addr: config.Telemetry.Address, Handler: mux}
 
-	telemetry.RegisterProbes(mux)
+	telemetry.RegisterProbes(mux, init)
 	telemetry.RegisterMetrics(mux)
 
 	err := srv.ListenAndServe()

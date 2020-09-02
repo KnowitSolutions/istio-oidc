@@ -5,11 +5,13 @@ import (
 )
 
 type config struct {
-	Controller controller `yaml:"Controller"`
-	Service    service    `yaml:"Service"`
-	ExtAuthz   extAuthz   `yaml:"ExtAuthz"`
-	Keycloak   keycloak   `yaml:"Keycloak"`
-	Telemetry  telemetry  `yaml:"Telemetry"`
+	Controller  controller  `yaml:"Controller"`
+	Service     service     `yaml:"Service"`
+	ExtAuthz    extAuthz    `yaml:"ExtAuthz"`
+	Sessions    sessions    `yaml:"Sessions"`
+	Replication replication `yaml:"Replication"`
+	Keycloak    keycloak    `yaml:"Keycloak"`
+	Telemetry   telemetry   `yaml:"Telemetry"`
 }
 
 type controller struct {
@@ -26,14 +28,12 @@ type controller struct {
 }
 
 type service struct {
-	Hostname string `yaml:"Hostname"`
 	Address string `yaml:"Address"`
 }
 
 type extAuthz struct {
 	ClusterName string        `yaml:"ClusterName"`
 	Timeout     time.Duration `yaml:"Timeout"`
-	Sessions    sessions      `yaml:"Sessions"`
 }
 
 type sessions struct {
@@ -41,6 +41,29 @@ type sessions struct {
 	CleaningGracePeriod time.Duration `yaml:"CleaningGracePeriod"`
 }
 
+const (
+	NoneMode   = "none"
+	StaticMode = "static"
+	DnsMode    = "dns"
+)
+
+type replication struct {
+	Mode             string                 `yaml:"Mode"`
+	StaticPeers      []string               `yaml:"StaticPeers"`
+	PeerAddress      replicationPeerAddress `yaml:"PeerAddress"`
+
+	AdvertiseAddress string                 `yaml:"AdvertiseAddress"`
+
+	EstablishInterval      time.Duration `yaml:"EstablishInterval"`
+	ReestablishGracePeriod time.Duration `yaml:"ReestablishGracePeriod"`
+}
+
+type replicationPeerAddress struct {
+	Domain  string
+	Service string
+}
+
+// TODO: Make generic. Don't assume Keycloak
 type keycloak struct {
 	Url string `yaml:"URL"`
 }

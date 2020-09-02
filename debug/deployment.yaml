@@ -66,8 +66,6 @@ metadata:
   name: istio-oidc
 data:
   config.yaml: |
-    Service:
-      Hostname: istio-oidc.istio-oidc
     ExtAuthz:
       ClusterName: istio-oidc.istio-oidc
       Timeout: 1h

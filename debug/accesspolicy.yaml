@@ -15,6 +15,6 @@ kind: Secret
 metadata:
   name: debug
   namespace: # TODO: Set namespace
-data:
+stringData:
   clientID: # TODO: Set client ID
   clientSecret: # TODO: Set client secret

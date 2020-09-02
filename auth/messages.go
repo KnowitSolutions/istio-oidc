@@ -17,7 +17,7 @@ type request struct {
 
 	policy  *accesspolicy.AccessPolicy
 	route   *accesspolicy.Route
-	session *state.Session
+	session state.Session
 }
 
 type response struct {

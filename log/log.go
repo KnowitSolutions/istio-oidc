@@ -54,5 +54,10 @@ func Error(ctx context.Context, err error, msg string)  {
 		ctx = context.Background()
 	}
 
-	log.FromContext(ctx).WithError(err).Error(msg)
+	logger := log.FromContext(ctx)
+	if err != nil {
+		logger = logger.WithError(err)
+	}
+
+	logger.Error(msg)
 }

@@ -2,9 +2,6 @@
 // +versionName=v1
 package api
 
-//go:generate controller-gen object
-//go:generate controller-gen crd output:dir=.
-
 import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/scheme"

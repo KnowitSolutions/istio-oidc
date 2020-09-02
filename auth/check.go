@@ -74,8 +74,11 @@ func (srv *Server) isAuthenticated(ctx context.Context, req *request) bool {
 	}
 
 	hash := sha512.Sum512([]byte(token))
-	req.session = srv.GetSession(hash)
-	return req.session != nil
+	id := string(hash[:])
+
+	var ok bool
+	req.session, ok = srv.GetSession(id)
+	return ok
 }
 
 func (srv *Server) startOidc(ctx context.Context, req *request) *response {
@@ -160,11 +163,17 @@ func (srv *Server) setToken(ctx context.Context, req *request, token *oauth2.Tok
 		return &response{status: http.StatusInternalServerError}
 	}
 
-	srv.SetSession(state.Session{
-		Hash:         sha512.Sum512([]byte(tok)),
-		RefreshToken: token.RefreshToken,
-		Expiry:       token.Expiry,
-	})
+	hash := sha512.Sum512([]byte(tok))
+	id := string(hash[:])
+	sess := state.StampedSession{
+		Session: state.Session{
+			Id:           id,
+			RefreshToken: token.RefreshToken,
+			Expiry:       token.Expiry,
+		},
+	}
+	sess = srv.SessionStore.SetSession(sess)
+	srv.Client.SetSession(ctx, sess)
 
 	cookie := http.Cookie{
 		Name:     bearerCookie,

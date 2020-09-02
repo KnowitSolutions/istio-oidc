@@ -13,6 +13,8 @@ func (c *config) normalize() {
 	c.Controller.normalize()
 	c.Service.normalize()
 	c.ExtAuthz.normalize()
+	c.Sessions.normalize()
+	c.Replication.normalize()
 	c.Keycloak.normalize()
 	c.Telemetry.normalize()
 }
@@ -66,12 +68,6 @@ func (c *controller) normalize() {
 }
 
 func (s *service) normalize() {
-	if s.Hostname == "" {
-		err := errors.New("missing service hostname")
-		log.Error(nil, err, "Failed loading config")
-		os.Exit(1)
-	}
-
 	if s.Address == "" {
 		s.Address = ":8080"
 	}
@@ -87,8 +83,6 @@ func (ea *extAuthz) normalize() {
 	if ea.Timeout == 0 {
 		ea.Timeout = time.Second
 	}
-
-	ea.Sessions.normalize()
 }
 
 func (s *sessions) normalize() {
@@ -98,6 +92,33 @@ func (s *sessions) normalize() {
 
 	if s.CleaningGracePeriod == 0 {
 		s.CleaningGracePeriod = time.Minute
+	}
+}
+func (r *replication) normalize() {
+	switch r.Mode {
+	case "":
+		r.Mode = NoneMode
+	case NoneMode:
+	case StaticMode:
+	case DnsMode:
+	default:
+		err := errors.New("invalid replication mode")
+		log.Error(nil, err, "Failed loading config")
+		os.Exit(1)
+	}
+
+	if r.AdvertiseAddress == "" {
+		err := errors.New("missing advertise address")
+		log.Error(nil, err, "Failed loading config")
+		os.Exit(1)
+	}
+
+	if r.EstablishInterval == 0 {
+		r.EstablishInterval = time.Minute
+	}
+
+	if r.ReestablishGracePeriod == 0 {
+		r.ReestablishGracePeriod = time.Minute
 	}
 }
 

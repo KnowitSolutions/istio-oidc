@@ -14,6 +14,7 @@ import (
 )
 
 type ServerV2 struct {
+	auth.UnimplementedAuthorizationServer
 	*Server
 }
 

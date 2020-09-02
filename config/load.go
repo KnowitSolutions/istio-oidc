@@ -25,12 +25,17 @@ func Load(filename string) {
 		os.Exit(1)
 	}
 
+	if cfg.Replication.AdvertiseAddress == "" {
+		cfg.Replication.AdvertiseAddress = os.Getenv("ADVERTISE_ADDRESS")
+	}
+
 	cfg.normalize()
 
 	Controller = cfg.Controller
 	Service = cfg.Service
 	ExtAuthz = cfg.ExtAuthz
-	Sessions = cfg.ExtAuthz.Sessions
+	Sessions = cfg.Sessions
+	Replication = cfg.Replication
 	Keycloak = cfg.Keycloak
 	Telemetry = cfg.Telemetry
 }

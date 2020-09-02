@@ -2,6 +2,7 @@ package auth
 
 import (
 	"github.com/KnowitSolutions/istio-oidc/log/errors"
+	"github.com/KnowitSolutions/istio-oidc/replication"
 	"github.com/KnowitSolutions/istio-oidc/state"
 	"github.com/KnowitSolutions/istio-oidc/state/accesspolicy"
 	"net/http"
@@ -12,6 +13,7 @@ type Server struct {
 	state.KeyStore
 	state.AccessPolicyStore
 	state.SessionStore
+	replication.Client
 }
 
 func (srv *Server) V2() *ServerV2 {
