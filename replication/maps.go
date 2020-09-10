@@ -8,7 +8,7 @@ import (
 
 func sessionToProto(obj state.Session) *api.Session {
 	return &api.Session{
-		Id:           obj.Id,
+		Id:           []byte(obj.Id),
 		RefreshToken: obj.RefreshToken,
 		Expiry:       timestamppb.New(obj.Expiry),
 	}
@@ -16,7 +16,7 @@ func sessionToProto(obj state.Session) *api.Session {
 
 func sessionFromProto(proto *api.Session) state.Session {
 	return state.Session{
-		Id:           proto.Id,
+		Id:           string(proto.Id),
 		RefreshToken: proto.RefreshToken,
 		Expiry:       proto.Expiry.AsTime(),
 	}

@@ -173,7 +173,7 @@ func (srv *Server) setToken(ctx context.Context, req *request, token *oauth2.Tok
 		},
 	}
 	sess = srv.SessionStore.SetSession(sess)
-	srv.Client.SetSession(ctx, sess)
+	srv.Client.SetSession(sess)
 
 	cookie := http.Cookie{
 		Name:     bearerCookie,

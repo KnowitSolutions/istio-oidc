@@ -134,7 +134,6 @@ func startExtAuthz(
 		SessionStore:      sessStore,
 		Client:            replication.Client{Self: self, Peers: peers},
 	}
-
 	authv2.RegisterAuthorizationServer(srv, extAuth.V2())
 }
 
@@ -145,8 +144,9 @@ func startReplication(
 	init chan<- struct{},
 ) {
 	repl := replication.Server{Self: self, Peers: peers}
-	replication.NewWorker(self, peers, init)
 	api.RegisterReplicationServer(srv, &repl)
+
+	replication.NewWorker(self, peers, init)
 }
 
 func startTelemetry(

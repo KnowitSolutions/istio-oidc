@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"github.com/KnowitSolutions/istio-oidc/config"
 	"github.com/KnowitSolutions/istio-oidc/log/errors"
 	"sync"
 )
@@ -21,73 +22,52 @@ func NewPeerId() (string, error) {
 }
 
 type Peers struct {
-	eps         map[string]string
-	conns       map[string]*connection
-	connsMu     sync.RWMutex
-	handshakeMu sync.Mutex
-	lookup      endpointLookup
+	peers  map[string]struct{}
+	conns  map[string]*connection
+	mu     sync.RWMutex
+	lookup endpointLookup
 }
 
 func NewPeers() *Peers {
 	return &Peers{
-		eps:    map[string]string{},
+		peers:  map[string]struct{}{},
 		conns:  map[string]*connection{},
 		lookup: newEndpointLookup(),
 	}
 }
 
-func (p *Peers) hasEp(ep string) bool {
-	p.connsMu.RLock()
-	defer p.connsMu.RUnlock()
+func (p *Peers) addPeer(id string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 
-	_, ok := p.eps[ep]
-	return ok
+	p.peers[id] = struct{}{}
 }
 
 func (p *Peers) hasPeer(id string) bool {
-	p.connsMu.RLock()
-	defer p.connsMu.RUnlock()
+	p.mu.RLock()
+	defer p.mu.RUnlock()
 
-	_, ok := p.conns[id]
+	_, ok := p.peers[id]
+	return ok
+}
+
+func (p *Peers) hasEp(ep string) bool {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	_, ok := p.conns[ep]
 	return ok
 }
 
 func (p *Peers) getEps() []string {
-	p.connsMu.RLock()
-	defer p.connsMu.RUnlock()
+	p.mu.RLock()
+	defer p.mu.RUnlock()
 
-	eps := make([]string, 0, len(p.eps))
-	for ep := range p.eps {
+	eps := make([]string, 0, len(p.conns))
+	for ep := range p.conns {
 		eps = append(eps, ep)
 	}
 	return eps
-}
-
-func (p *Peers) getPeers() []*connection {
-	p.connsMu.RLock()
-	defer p.connsMu.RUnlock()
-
-	conns := make([]*connection, 0, len(p.conns))
-	for _, conn := range p.conns {
-		conns = append(conns, conn)
-	}
-	return conns
-}
-
-func (p *Peers) addUnsafe(conn *connection) {
-	p.eps[conn.id] = conn.ep
-	p.conns[conn.id] = conn
-}
-
-func (p *Peers) removeUnsafe(ep string) {
-	id := p.eps[ep]
-	conn := p.conns[id]
-	if conn != nil {
-		_ = conn.conn.Close()
-	}
-
-	delete(p.eps, ep)
-	delete(p.conns, id)
 }
 
 func (p *Peers) refresh(ctx context.Context) error {
@@ -97,34 +77,45 @@ func (p *Peers) refresh(ctx context.Context) error {
 		return err
 	}
 
-	p.connsMu.Lock()
-	defer p.connsMu.Unlock()
+	p.mu.Lock()
+	defer p.mu.Unlock()
 
 	keep := make(map[string]bool, len(eps))
 	for _, ep := range eps {
-		keep[ep] = true
-		p.eps[ep] = p.eps[ep]
+		if ep != config.Replication.AdvertiseAddress {
+			keep[ep] = true
+			p.conns[ep] = p.conns[ep]
+		}
 	}
-
-	for ep := range p.eps {
+	for ep := range p.conns {
 		if !keep[ep] {
-			p.removeUnsafe(ep)
+			p.conns[ep].disconnect()
+			delete(p.conns, ep)
 		}
 	}
 
 	return nil
 }
 
-func (p *Peers) getConnection(ctx context.Context, self *Self, peer string) *connection {
-	p.connsMu.Lock()
-	defer p.connsMu.Unlock()
+func (p *Peers) getConnection(self *Self, ep string) *connection {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 
-	id := p.eps[peer]
-	conn := p.conns[id]
-	if conn == nil {
-		conn = newConnection(ctx, self, peer, &p.handshakeMu)
-		p.addUnsafe(conn)
+	if p.conns[ep] == nil {
+		p.conns[ep] = newConnection(self, ep)
 	}
+	return p.conns[ep]
+}
 
-	return conn
+func (p *Peers) getConnections() []*connection {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	conns := make([]*connection, 0, len(p.conns))
+	for _, conn := range p.conns {
+		if conn != nil {
+			conns = append(conns, conn)
+		}
+	}
+	return conns
 }

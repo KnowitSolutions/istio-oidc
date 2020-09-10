@@ -42,7 +42,7 @@ message StreamSessionsResponse {
 }
 
 message Session {
-    string id = 1;
+    bytes id = 1;
     string refresh_token = 2;
     google.protobuf.Timestamp expiry = 3;
 }

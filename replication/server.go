@@ -2,6 +2,7 @@ package replication
 
 import (
 	"context"
+	"encoding/hex"
 	"github.com/KnowitSolutions/istio-oidc/api"
 	"github.com/KnowitSolutions/istio-oidc/log"
 	"github.com/KnowitSolutions/istio-oidc/state"
@@ -12,8 +13,8 @@ import (
 
 type Server struct {
 	api.UnimplementedReplicationServer
-	Self      *Self
-	Peers     *Peers
+	Self  *Self
+	Peers *Peers
 }
 
 func (s Server) Handshake(ctx context.Context, req *api.HandshakeRequest) (*api.HandshakeResponse, error) {
@@ -39,16 +40,21 @@ func (s Server) Handshake(ctx context.Context, req *api.HandshakeRequest) (*api.
 		return nil, err
 	}
 
-	conn := s.Peers.getConnection(ctx, s.Self, req.PeerEndpoint)
-	go conn.update(ctx, s.Self, req.Latest)
+	s.Peers.addPeer(req.PeerId)
+	conn := s.Peers.getConnection(s.Self, req.PeerEndpoint)
+	conn.wakeup()
+	if conn.live {
+		go conn.update(ctx, s.Self, req.Latest)
+	}
 
 	return &api.HandshakeResponse{
-		PeerId: s.Self.id,
+		PeerId:       s.Self.id,
 		PeerEndpoint: s.Self.ep,
-		Latest: latestToProto(s.Self.copyLatest()),
+		Latest:       latestToProto(s.Self.copyLatest()),
 	}, nil
 }
 
+// TODO: Reject update if skipping versions and initiate stream instead
 func (s Server) SetSession(ctx context.Context, req *api.SetSessionRequest) (*api.SetSessionResponse, error) {
 	ctx = addressCtx(ctx)
 	ctx = log.WithValues(ctx, "peer", req.PeerId)
@@ -62,7 +68,7 @@ func (s Server) SetSession(ctx context.Context, req *api.SetSessionRequest) (*ap
 	sess := sessionFromProto(req.Session)
 	stamp := stampFromProto(req.Stamp)
 
-	vals := log.MakeValues("session", sess.Id)
+	vals := log.MakeValues("session", hex.EncodeToString(req.Session.Id))
 	log.Info(ctx, vals, "Received session from peer")
 
 	s.Self.sessStore.SetSession(state.StampedSession{Session: sess, Stamp: stamp})
@@ -89,12 +95,17 @@ func (s Server) StreamSessions(req *api.StreamSessionsRequest, stream api.Replic
 		sess := sessionToProto(e.Session)
 		stamp := stampToProto(e.Stamp)
 
-		res := &api.StreamSessionsResponse{
+		req := &api.StreamSessionsResponse{
 			Session: sess,
 			Stamp:   stamp,
 		}
-		err := stream.Send(res)
+
+		vals := log.MakeValues("session", hex.EncodeToString(req.Session.Id))
+		log.Info(ctx, vals, "Sending session to peer")
+
+		err := stream.Send(req)
 		if err != nil {
+			log.Error(ctx, err, "Failed sending session to peer")
 			return err
 		}
 	}

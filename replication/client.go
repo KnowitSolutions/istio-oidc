@@ -10,10 +10,11 @@ type Client struct {
 	Peers *Peers
 }
 
-func (c Client) SetSession(ctx context.Context, sess state.StampedSession) {
+func (c Client) SetSession(sess state.StampedSession) {
+	ctx := context.Background()
 	c.Self.update(c.Self.id, sess.Serial)
 
-	conns := c.Peers.getPeers()
+	conns := c.Peers.getConnections()
 	for _, conn := range conns {
 		go conn.setSession(ctx, c.Self, sess)
 	}

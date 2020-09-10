@@ -2,6 +2,7 @@ package replication
 
 import (
 	"context"
+	"encoding/hex"
 	"github.com/KnowitSolutions/istio-oidc/api"
 	"github.com/KnowitSolutions/istio-oidc/config"
 	"github.com/KnowitSolutions/istio-oidc/log"
@@ -16,28 +17,28 @@ import (
 )
 
 type connection struct {
-	id, ep   string
-	conn     *grpc.ClientConn
-	globalMu *sync.Mutex
-	localMu  sync.Mutex
+	ep   string
+	conn *grpc.ClientConn
+
+	live bool
+	init chan struct{}
+	wake chan struct{}
+	once sync.Once
+	mu   sync.Mutex
 }
 
-func newConnection(ctx context.Context, self *Self, peer string, mu *sync.Mutex) *connection {
-	ctx = log.WithValues(ctx, "peer", peer)
-
-	conn := connection{ep: peer, globalMu: mu}
+func newConnection(self *Self, peer string) *connection {
+	conn := connection{ep: peer, init: make(chan struct{})}
 	conn.conn, _ = grpc.Dial(peer, grpc.WithInsecure())
+
+	ctx := context.Background()
+	ctx = log.WithValues(ctx, "peer", peer)
 	go conn.handshake(ctx, self)
 
 	return &conn
 }
 
 func (c *connection) handshake(ctx context.Context, self *Self) {
-	c.globalMu.Lock()
-	defer c.globalMu.Unlock()
-	c.localMu.Lock()
-	defer c.localMu.Unlock()
-
 	log.Info(ctx, nil, "Handshaking with peer")
 
 	req := api.HandshakeRequest{
@@ -57,17 +58,60 @@ func (c *connection) handshake(ctx context.Context, self *Self) {
 		return
 	}
 
-	c.id = res.PeerId
-	c.update(ctx, self, res.Latest)
+	go c.update(ctx, self, res.Latest)
 }
 
 func (c *connection) reestablish(ctx context.Context, self *Self, err error) {
+	c.live = false
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.wake != nil {
+		return
+	}
+	c.wake = make(chan struct{})
+	c.once = sync.Once{}
+
+	ch := c.init
+	if ch != nil {
+		c.init = nil
+		close(ch)
+	}
+
 	if status.Code(err) == codes.Canceled {
 		log.Info(ctx, nil, "Disconnected from peer")
+		return
 	} else {
 		log.Info(ctx, nil, "Backing off")
-		time.Sleep(config.Replication.ReestablishGracePeriod)
-		c.handshake(ctx, self)
+	}
+
+	c.mu.Unlock()
+	select {
+	case <-time.After(config.Replication.ReestablishGracePeriod):
+	case <-c.wake:
+	}
+	c.mu.Lock()
+
+	c.init = make(chan struct{})
+	c.wake = nil
+
+	go c.handshake(ctx, self)
+}
+
+func (c *connection) wakeup() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.wake != nil {
+		c.once.Do(func() { close(c.wake) })
+	}
+}
+
+func (c *connection) wait() {
+	ch := c.init
+	if ch != nil {
+		<-ch
 	}
 }
 
@@ -83,29 +127,24 @@ func (c *connection) update(ctx context.Context, self *Self, latest []*api.Stamp
 }
 
 func (c *connection) setSession(ctx context.Context, self *Self, sess state.StampedSession) {
-	c.localMu.Lock()
-	defer c.localMu.Unlock()
-
 	req := api.SetSessionRequest{
 		PeerId:  self.id,
 		Session: sessionToProto(sess.Session),
 		Stamp:   stampToProto(sess.Stamp),
 	}
 
-	log.Info(ctx, nil, "Setting session on peer")
+	vals := log.MakeValues("session", hex.EncodeToString(req.Session.Id))
+	log.Info(ctx, vals, "Sending session to peer")
 
 	client := api.NewReplicationClient(c.conn)
 	_, err := client.SetSession(ctx, &req)
 	if err != nil {
-		log.Error(ctx, err, "Failed setting session on peer")
+		log.Error(ctx, err, "Failed sending session to peer")
 		go c.reestablish(ctx, self, err)
 	}
 }
 
 func (c *connection) streamSessions(ctx context.Context, self *Self) {
-	c.localMu.Lock()
-	defer c.localMu.Unlock()
-
 	log.Info(ctx, nil, "Streaming new sessions from peer")
 
 	req := api.StreamSessionsRequest{
@@ -126,15 +165,31 @@ func (c *connection) streamSessions(ctx context.Context, self *Self) {
 		if err == io.EOF {
 			break
 		} else if err != nil {
-			log.Error(ctx, err, "Failed streaming sessions from peer")
+			log.Error(ctx, err, "Failed receiving session from peer")
 			go c.reestablish(ctx, self, err)
 			return
 		}
+
+		vals := log.MakeValues("session", hex.EncodeToString(res.Session.Id))
+		log.Info(ctx, vals, "Received session from peer")
 
 		sess := state.StampedSession{
 			Session: sessionFromProto(res.Session),
 			Stamp:   stampFromProto(res.Stamp),
 		}
 		self.sessStore.SetSession(sess)
+	}
+
+	c.live = true
+	ch := c.init
+	if ch != nil {
+		c.init = nil
+		close(ch)
+	}
+}
+
+func (c *connection) disconnect() {
+	if c != nil {
+		_ = c.conn.Close()
 	}
 }
