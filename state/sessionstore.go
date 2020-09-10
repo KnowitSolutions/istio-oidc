@@ -65,6 +65,10 @@ func (ss *sessionStore) SetSession(sess StampedSession) StampedSession {
 		sess.Stamp = Stamp{PeerId: ss.id, Serial: ss.curr}
 	}
 
+	if ss.store[sess.Stamp.PeerId] == nil {
+		ss.store[sess.Stamp.PeerId] = list.New()
+	}
+
 	ss.store[sess.Stamp.PeerId].PushBack(sess)
 	ss.lookup[sess.Id] = sess.Session
 
@@ -79,6 +83,10 @@ func (ss *sessionStore) StreamSessions(from []Stamp) <-chan StampedSession {
 			ss.mu.RLock()
 			l := ss.store[s.PeerId]
 			ss.mu.RUnlock()
+
+			if l == nil {
+				continue
+			}
 
 			var e *list.Element
 			for e = l.Front(); e != nil; e = e.Next() {
