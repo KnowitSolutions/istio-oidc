@@ -40,7 +40,7 @@ type AccessPolicySpec struct {
 type AccessPolicyOIDC struct {
 	CredentialsSecret AccessPolicyOIDCCredentialsSecret `json:"credentialsSecretRef"`
 	// +kubebuilder:validation:Optional
-	// +kubebuilder:validation:Pattern=`^\/[A-Za-z0-9\-._~!$&'()*+,;=:@\/%]*$`
+	// +kubebuilder:validation:Pattern=`^\/[A-Za-z0-9\-._~!$&'()*+,;=:@\/%]*$|^$`
 	CallbackPath string `json:"callbackPath"`
 }
 
