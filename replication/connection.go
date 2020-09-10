@@ -26,7 +26,7 @@ func newConnection(ctx context.Context, self *Self, peer string, mu *sync.Mutex)
 	ctx = log.WithValues(ctx, "peer", peer)
 
 	conn := connection{ep: peer, globalMu: mu}
-	conn.conn, _ = grpc.Dial(peer)
+	conn.conn, _ = grpc.Dial(peer, grpc.WithInsecure())
 	go conn.handshake(ctx, self)
 
 	return &conn

@@ -32,6 +32,8 @@ func main() {
 		log.Error(nil, err, "Failed creating peer ID")
 		os.Exit(1)
 	}
+	vals := log.MakeValues("id", id)
+	log.Info(nil, vals, "Assigned peer ID")
 
 	keyStore := state.NewKeyStore()
 	apStore := state.NewAccessPolicyStore()

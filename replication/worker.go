@@ -35,11 +35,12 @@ func refresh(ctx context.Context, self *Self, peers *Peers) bool {
 
 	eps := peers.getEps()
 	for _, ep := range eps {
-		ctx := log.WithValues(ctx, "peer", ep)
-		conn := peers.getConnection(ctx, self, ep)
-		if conn.id == "" {
-			conn.handshake(ctx, self)
+		if ep == config.Replication.AdvertiseAddress {
+			continue
 		}
+
+		ctx := log.WithValues(ctx, "peer", ep)
+		_ = peers.getConnection(ctx, self, ep)
 	}
 
 	return true

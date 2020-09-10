@@ -57,7 +57,7 @@ func (p *Peers) getEps() []string {
 	defer p.connsMu.RUnlock()
 
 	eps := make([]string, 0, len(p.eps))
-	for _, ep := range p.eps {
+	for ep := range p.eps {
 		eps = append(eps, ep)
 	}
 	return eps
@@ -122,7 +122,7 @@ func (p *Peers) getConnection(ctx context.Context, self *Self, peer string) *con
 	id := p.eps[peer]
 	conn := p.conns[id]
 	if conn == nil {
-		conn := newConnection(ctx, self, peer, &p.handshakeMu)
+		conn = newConnection(ctx, self, peer, &p.handshakeMu)
 		p.addUnsafe(conn)
 	}
 
