@@ -27,8 +27,8 @@ func NewAccessPolicy(ap *api.AccessPolicy, secret *core.Secret) (*AccessPolicy, 
 func (ap *accessPolicySpecStatus) convert(name string, secret *core.Secret) (*AccessPolicy, error) {
 	oidc := accessPolicyOIDC(ap.spec.OIDC)
 
-	var defRoute Route
-	routes := make(Routes, len(ap.spec.Routes)-1)
+	defRoute := Route{EnableAuthz: true}
+	routes := make(Routes, len(ap.spec.Routes))
 	for _, route := range ap.spec.Routes {
 		route := accessPolicyRoute(route)
 		if route.Name == "" {
