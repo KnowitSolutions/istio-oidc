@@ -96,6 +96,7 @@ func (c *connection) reestablish(ctx context.Context, self *Self, err error) {
 	c.init = make(chan struct{})
 	c.wake = nil
 
+	c.conn.ResetConnectBackoff()
 	go c.handshake(ctx, self)
 }
 
