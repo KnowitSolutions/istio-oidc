@@ -58,6 +58,7 @@ func (c *connection) handshake(ctx context.Context, self *Self) {
 		return
 	}
 
+	ctx = log.WithValues(ctx, "peer", res.PeerId)
 	go c.update(ctx, self, res.Latest)
 }
 
@@ -178,7 +179,12 @@ func (c *connection) streamSessions(ctx context.Context, self *Self) {
 			Session: sessionFromProto(res.Session),
 			Stamp:   stampFromProto(res.Stamp),
 		}
-		self.sessStore.SetSession(sess)
+		_, ok := self.sessStore.SetSession(sess)
+		if !ok {
+			log.Error(ctx, nil, "Received session out of order from peer")
+			go c.reestablish(ctx, self, err)
+			return
+		}
 	}
 
 	c.live = true

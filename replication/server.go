@@ -54,7 +54,6 @@ func (s Server) Handshake(ctx context.Context, req *api.HandshakeRequest) (*api.
 	}, nil
 }
 
-// TODO: Reject update if skipping versions and initiate stream instead
 func (s Server) SetSession(ctx context.Context, req *api.SetSessionRequest) (*api.SetSessionResponse, error) {
 	ctx = addressCtx(ctx)
 	ctx = log.WithValues(ctx, "peer", req.PeerId)
@@ -71,10 +70,15 @@ func (s Server) SetSession(ctx context.Context, req *api.SetSessionRequest) (*ap
 	vals := log.MakeValues("session", hex.EncodeToString(req.Session.Id))
 	log.Info(ctx, vals, "Received session from peer")
 
-	s.Self.sessStore.SetSession(state.StampedSession{Session: sess, Stamp: stamp})
-	s.Self.update(stamp.PeerId, stamp.Serial)
+	_, ok := s.Self.sessStore.SetSession(state.StampedSession{Session: sess, Stamp: stamp})
+	if ok {
+		s.Self.update(stamp.PeerId, stamp.Serial)
+		return &api.SetSessionResponse{}, nil
+	} else {
+		err := status.Error(codes.InvalidArgument, "Detected skipped session from peer")
+		return &api.SetSessionResponse{}, err
+	}
 
-	return &api.SetSessionResponse{}, nil
 }
 
 func (s Server) StreamSessions(req *api.StreamSessionsRequest, stream api.Replication_StreamSessionsServer) error {

@@ -26,7 +26,7 @@ type StampedSession struct {
 
 type SessionStore interface {
 	GetSession(string) (Session, bool)
-	SetSession(StampedSession) StampedSession
+	SetSession(StampedSession) (StampedSession, bool)
 	StreamSessions([]Stamp) <-chan StampedSession
 }
 
@@ -56,7 +56,7 @@ func (ss *sessionStore) GetSession(id string) (Session, bool) {
 	return sess, ok
 }
 
-func (ss *sessionStore) SetSession(sess StampedSession) StampedSession {
+func (ss *sessionStore) SetSession(sess StampedSession) (StampedSession, bool) {
 	ss.mu.Lock()
 	defer ss.mu.Unlock()
 
@@ -69,10 +69,18 @@ func (ss *sessionStore) SetSession(sess StampedSession) StampedSession {
 		ss.store[sess.Stamp.PeerId] = list.New()
 	}
 
+	last := ss.store[sess.Stamp.PeerId].Back()
+	if last != nil {
+		curr := last.Value.(StampedSession).Serial + 1
+		if sess.Serial != curr {
+			return StampedSession{}, false
+		}
+	}
+
 	ss.store[sess.Stamp.PeerId].PushBack(sess)
 	ss.lookup[sess.Id] = sess.Session
 
-	return sess
+	return sess, true
 }
 
 func (ss *sessionStore) StreamSessions(from []Stamp) <-chan StampedSession {
