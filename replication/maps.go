@@ -36,14 +36,6 @@ func stampFromProto(proto *api.Stamp) state.Stamp {
 	}
 }
 
-func stampsFromProto(proto []*api.Stamp) []state.Stamp {
-	arr := make([]state.Stamp, len(proto))
-	for i := range proto {
-		arr[i] = stampFromProto(proto[i])
-	}
-	return arr
-}
-
 func latestToProto(dict map[string]uint64) []*api.Stamp {
 	proto := make([]*api.Stamp, 0, len(dict))
 	for k, v := range dict {

@@ -94,7 +94,7 @@ func (s Server) StreamSessions(req *api.StreamSessionsRequest, stream api.Replic
 	}
 
 	log.Info(ctx, nil, "Streaming sessions to peer")
-	from := stampsFromProto(req.From)
+	from := latestFromProto(req.From)
 	ch := s.Self.sessStore.StreamSessions(from)
 
 	for e := range ch {
