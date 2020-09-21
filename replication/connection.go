@@ -17,8 +17,9 @@ import (
 )
 
 type connection struct {
-	ep   string
-	conn *grpc.ClientConn
+	ep    string
+	conn  *grpc.ClientConn
+	peers map[string]struct{}
 
 	live bool
 	init chan struct{}
@@ -27,8 +28,8 @@ type connection struct {
 	mu   sync.Mutex
 }
 
-func newConnection(self *Self, peer string) *connection {
-	conn := connection{ep: peer, init: make(chan struct{})}
+func newConnection(self *Self, peers map[string]struct{}, peer string) *connection {
+	conn := connection{ep: peer, peers: peers, init: make(chan struct{})}
 	conn.conn, _ = grpc.Dial(peer, grpc.WithInsecure())
 
 	ctx := context.Background()
@@ -58,8 +59,9 @@ func (c *connection) handshake(ctx context.Context, self *Self) {
 		return
 	}
 
-	// TODO: Add peerId to allowed
 	ctx = log.WithValues(ctx, "peer", res.PeerId)
+	c.peers[res.PeerId] = struct{}{}
+
 	go c.update(ctx, self, res.Latest)
 }
 
