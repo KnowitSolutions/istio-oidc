@@ -128,7 +128,7 @@ func (ss *sessionStore) clean(min time.Time) {
 	defer ss.mu.RUnlock()
 
 	for _, l := range ss.store {
-		for e := l.Front(); e != nil; e.Next() {
+		for e := l.Front(); e != nil; e = e.Next() {
 			v := e.Value.(StampedSession)
 			if v.Expiry.Before(min) {
 				ss.delete(l, e)

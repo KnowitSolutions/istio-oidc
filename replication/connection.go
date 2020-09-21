@@ -58,6 +58,7 @@ func (c *connection) handshake(ctx context.Context, self *Self) {
 		return
 	}
 
+	// TODO: Add peerId to allowed
 	ctx = log.WithValues(ctx, "peer", res.PeerId)
 	go c.update(ctx, self, res.Latest)
 }

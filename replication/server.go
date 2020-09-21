@@ -40,7 +40,9 @@ func (s Server) Handshake(ctx context.Context, req *api.HandshakeRequest) (*api.
 		return nil, err
 	}
 
+	log.Info(ctx, nil, "Received handshake from peer")
 	s.Peers.addPeer(req.PeerId)
+
 	conn := s.Peers.getConnection(s.Self, req.PeerEndpoint)
 	conn.wakeup()
 	if conn.live {
