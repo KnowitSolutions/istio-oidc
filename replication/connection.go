@@ -9,6 +9,7 @@ import (
 	"github.com/KnowitSolutions/istio-oidc/state"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/status"
 	"io"
 	"os"
@@ -90,6 +91,8 @@ func (c *connection) reestablish(ctx context.Context, self *Self, err error) {
 		log.Info(ctx, nil, "Backing off")
 	}
 
+	// TODO: If gRPC can be configured to never go idle (continuously reconnect)
+	// TODO: then grace period can be removed and we can just wait for state change instead
 	c.mu.Unlock()
 	select {
 	case <-time.After(config.Replication.ReestablishGracePeriod):
@@ -101,6 +104,7 @@ func (c *connection) reestablish(ctx context.Context, self *Self, err error) {
 	c.wake = nil
 
 	c.conn.ResetConnectBackoff()
+	c.conn.WaitForStateChange(ctx, connectivity.TransientFailure)
 	go c.handshake(ctx, self)
 }
 
