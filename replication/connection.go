@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"github.com/KnowitSolutions/istio-oidc/api"
-	"github.com/KnowitSolutions/istio-oidc/config"
 	"github.com/KnowitSolutions/istio-oidc/log"
 	"github.com/KnowitSolutions/istio-oidc/state"
 	"google.golang.org/grpc"
@@ -13,8 +12,8 @@ import (
 	"google.golang.org/grpc/status"
 	"io"
 	"os"
+	"strings"
 	"sync"
-	"time"
 )
 
 type connection struct {
@@ -24,9 +23,7 @@ type connection struct {
 
 	live bool
 	init chan struct{}
-	wake chan struct{}
 	once sync.Once
-	mu   sync.Mutex
 }
 
 func newConnection(self *Self, peers map[string]struct{}, peer string) *connection {
@@ -34,7 +31,8 @@ func newConnection(self *Self, peers map[string]struct{}, peer string) *connecti
 	conn.conn, _ = grpc.Dial(peer, grpc.WithInsecure())
 
 	ctx := context.Background()
-	ctx = log.WithValues(ctx, "peer", peer)
+	ctx = log.WithValues(ctx, "address", peer)
+	go conn.logConnectionState(ctx)
 	go conn.handshake(ctx, self)
 
 	return &conn
@@ -67,17 +65,13 @@ func (c *connection) handshake(ctx context.Context, self *Self) {
 }
 
 func (c *connection) reestablish(ctx context.Context, self *Self, err error) {
-	c.live = false
-
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if c.wake != nil {
+	var cont bool
+	c.once.Do(func() { cont = true })
+	if !cont {
 		return
 	}
-	c.wake = make(chan struct{})
-	c.once = sync.Once{}
 
+	c.live = false
 	ch := c.init
 	if ch != nil {
 		c.init = nil
@@ -87,34 +81,22 @@ func (c *connection) reestablish(ctx context.Context, self *Self, err error) {
 	if status.Code(err) == codes.Canceled {
 		log.Info(ctx, nil, "Disconnected from peer")
 		return
-	} else {
-		log.Info(ctx, nil, "Backing off")
 	}
 
-	// TODO: If gRPC can be configured to never go idle (continuously reconnect)
-	// TODO: then grace period can be removed and we can just wait for state change instead
-	c.mu.Unlock()
-	select {
-	case <-time.After(config.Replication.ReestablishGracePeriod):
-	case <-c.wake:
+	log.Info(ctx, nil, "Waiting for transport to recover")
+	for c.conn.GetState() == connectivity.TransientFailure {
+		c.conn.WaitForStateChange(ctx, connectivity.TransientFailure)
+		c.conn.WaitForStateChange(ctx, connectivity.Connecting)
 	}
-	c.mu.Lock()
 
 	c.init = make(chan struct{})
-	c.wake = nil
+	c.once = sync.Once{}
 
-	c.conn.ResetConnectBackoff()
-	c.conn.WaitForStateChange(ctx, connectivity.TransientFailure)
 	go c.handshake(ctx, self)
 }
 
 func (c *connection) wakeup() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if c.wake != nil {
-		c.once.Do(func() { close(c.wake) })
-	}
+	c.conn.ResetConnectBackoff()
 }
 
 func (c *connection) wait() {
@@ -205,5 +187,15 @@ func (c *connection) streamSessions(ctx context.Context, self *Self) {
 func (c *connection) disconnect() {
 	if c != nil {
 		_ = c.conn.Close()
+	}
+}
+
+func (c *connection) logConnectionState(ctx context.Context) {
+	for cont := true; cont; {
+		s := c.conn.GetState()
+		str := strings.ToLower(strings.Replace(s.String(), "_", " ", -1))
+		vals := log.MakeValues("state", str)
+		log.Info(ctx, vals, "Connection state changed")
+		cont = c.conn.WaitForStateChange(ctx, s)
 	}
 }

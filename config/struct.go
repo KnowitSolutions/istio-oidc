@@ -48,14 +48,12 @@ const (
 )
 
 type replication struct {
-	Mode             string                 `yaml:"Mode"`
-	StaticPeers      []string               `yaml:"StaticPeers"`
-	PeerAddress      replicationPeerAddress `yaml:"PeerAddress"`
+	Mode        string                 `yaml:"Mode"`
+	StaticPeers []string               `yaml:"StaticPeers"`
+	PeerAddress replicationPeerAddress `yaml:"PeerAddress"`
 
-	AdvertiseAddress string                 `yaml:"AdvertiseAddress"`
-
-	EstablishInterval      time.Duration `yaml:"EstablishInterval"`
-	ReestablishGracePeriod time.Duration `yaml:"ReestablishGracePeriod"`
+	AdvertiseAddress  string        `yaml:"AdvertiseAddress"`
+	EstablishInterval time.Duration `yaml:"EstablishInterval"`
 }
 
 type replicationPeerAddress struct {

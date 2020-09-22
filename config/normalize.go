@@ -116,10 +116,6 @@ func (r *replication) normalize() {
 	if r.EstablishInterval == 0 {
 		r.EstablishInterval = time.Minute
 	}
-
-	if r.ReestablishGracePeriod == 0 {
-		r.ReestablishGracePeriod = time.Minute
-	}
 }
 
 func (k *keycloak) normalize() {
