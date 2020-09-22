@@ -36,7 +36,7 @@ func refresh(ctx context.Context, self *Self, peers *Peers) bool {
 	eps := peers.getEps()
 	for _, ep := range eps {
 		conn := peers.getConnection(self, ep)
-		conn.wait()
+		<-conn.init
 	}
 
 	return true

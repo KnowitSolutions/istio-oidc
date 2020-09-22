@@ -30,8 +30,7 @@ func newConnection(self *Self, peers map[string]struct{}, peer string) *connecti
 	conn := connection{ep: peer, peers: peers, init: make(chan struct{})}
 	conn.conn, _ = grpc.Dial(peer, grpc.WithInsecure())
 
-	ctx := context.Background()
-	ctx = log.WithValues(ctx, "address", peer)
+	ctx := log.WithValues(nil, "address", peer)
 	go conn.logConnectionState(ctx)
 	go conn.handshake(ctx, self)
 
@@ -74,7 +73,6 @@ func (c *connection) reestablish(ctx context.Context, self *Self, err error) {
 	c.live = false
 	ch := c.init
 	if ch != nil {
-		c.init = nil
 		close(ch)
 	}
 
@@ -97,13 +95,6 @@ func (c *connection) reestablish(ctx context.Context, self *Self, err error) {
 
 func (c *connection) wakeup() {
 	c.conn.ResetConnectBackoff()
-}
-
-func (c *connection) wait() {
-	ch := c.init
-	if ch != nil {
-		<-ch
-	}
 }
 
 func (c *connection) update(ctx context.Context, self *Self, latest []*api.Stamp) {
@@ -179,7 +170,6 @@ func (c *connection) streamSessions(ctx context.Context, self *Self) {
 	c.live = true
 	ch := c.init
 	if ch != nil {
-		c.init = nil
 		close(ch)
 	}
 }
