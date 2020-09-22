@@ -73,6 +73,7 @@ func (c *connection) reestablish(ctx context.Context, self *Self, err error) {
 	c.live = false
 	ch := c.init
 	if ch != nil {
+		c.init = nil
 		close(ch)
 	}
 
@@ -93,6 +94,13 @@ func (c *connection) reestablish(ctx context.Context, self *Self, err error) {
 	go c.handshake(ctx, self)
 }
 
+func (c *connection) wait() {
+	ch := c.init
+	if ch != nil {
+		<-ch
+	}
+}
+
 func (c *connection) wakeup() {
 	c.conn.ResetConnectBackoff()
 }
@@ -100,11 +108,19 @@ func (c *connection) wakeup() {
 func (c *connection) update(ctx context.Context, self *Self, latest []*api.Stamp) {
 	mapped := latestFromProto(latest)
 	update := self.needsUpdate(mapped)
+
 	if update {
 		log.Info(ctx, nil, "Peer reports new sessions")
-		c.streamSessions(ctx, self)
+		c.live = c.streamSessions(ctx, self)
 	} else {
 		log.Info(ctx, nil, "Peer reports no new sessions")
+		c.live = true
+	}
+
+	ch := c.init
+	if ch != nil {
+		c.init = nil
+		close(ch)
 	}
 }
 
@@ -126,7 +142,7 @@ func (c *connection) setSession(ctx context.Context, self *Self, sess state.Stam
 	}
 }
 
-func (c *connection) streamSessions(ctx context.Context, self *Self) {
+func (c *connection) streamSessions(ctx context.Context, self *Self) bool {
 	log.Info(ctx, nil, "Streaming new sessions from peer")
 
 	req := api.StreamSessionsRequest{
@@ -139,7 +155,7 @@ func (c *connection) streamSessions(ctx context.Context, self *Self) {
 	if err != nil {
 		log.Error(ctx, err, "Failed streaming sessions from peer")
 		go c.reestablish(ctx, self, err)
-		return
+		return false
 	}
 
 	for {
@@ -149,7 +165,7 @@ func (c *connection) streamSessions(ctx context.Context, self *Self) {
 		} else if err != nil {
 			log.Error(ctx, err, "Failed receiving session from peer")
 			go c.reestablish(ctx, self, err)
-			return
+			return false
 		}
 
 		vals := log.MakeValues("session", hex.EncodeToString(res.Session.Id))
@@ -163,15 +179,11 @@ func (c *connection) streamSessions(ctx context.Context, self *Self) {
 		if !ok {
 			log.Error(ctx, nil, "Received session out of order from peer")
 			go c.reestablish(ctx, self, err)
-			return
+			return false
 		}
 	}
 
-	c.live = true
-	ch := c.init
-	if ch != nil {
-		close(ch)
-	}
+	return true
 }
 
 func (c *connection) disconnect() {

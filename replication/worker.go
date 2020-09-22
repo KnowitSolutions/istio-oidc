@@ -7,8 +7,8 @@ import (
 	"time"
 )
 
-func NewWorker(self *Self, peers *Peers, ch chan<- struct{}) {
-	go worker(self, peers, ch)
+func NewWorker(self *Self, peers *Peers, init chan<- struct{}) {
+	go worker(self, peers, init)
 }
 
 func worker(self *Self, peers *Peers, init chan<- struct{}) {
@@ -34,10 +34,13 @@ func refresh(ctx context.Context, self *Self, peers *Peers) bool {
 	}
 
 	eps := peers.getEps()
+	joined := len(eps) == 0
+
 	for _, ep := range eps {
 		conn := peers.getConnection(self, ep)
-		<-conn.init
+		conn.wait()
+		joined = joined || conn.live
 	}
 
-	return true
+	return joined
 }
