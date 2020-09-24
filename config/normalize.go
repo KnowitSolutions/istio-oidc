@@ -14,7 +14,7 @@ func (c *config) normalize() {
 	c.Service.normalize()
 	c.ExtAuthz.normalize()
 	c.Sessions.normalize()
-	c.Replication.normalize()
+	c.Replication.normalize(c.Service.Address)
 	c.Keycloak.normalize()
 	c.Telemetry.normalize()
 }
@@ -94,7 +94,7 @@ func (s *sessions) normalize() {
 		s.CleaningGracePeriod = time.Minute
 	}
 }
-func (r *replication) normalize() {
+func (r *replication) normalize(bindAddr string) {
 	switch r.Mode {
 	case "":
 		r.Mode = NoneMode
@@ -107,11 +107,14 @@ func (r *replication) normalize() {
 		os.Exit(1)
 	}
 
-	// TODO: Load from pod IP interface
 	if r.AdvertiseAddress == "" {
-		err := errors.New("missing advertise address")
-		log.Error(nil, err, "Failed loading config")
-		os.Exit(1)
+		addr, err := advertiseAddress(bindAddr)
+		if err != nil {
+			err = errors.Wrap(err, "could not determine address to advertise")
+			log.Error(nil, err, "Failed loading config")
+			os.Exit(1)
+		}
+		r.AdvertiseAddress = addr
 	}
 
 	if r.EstablishInterval == 0 {
