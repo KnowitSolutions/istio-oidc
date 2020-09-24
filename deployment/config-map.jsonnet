@@ -8,7 +8,7 @@ function(namespace, keycloak_url) {
   data: {
     'config.yaml': |||
       ExtAuthz:
-        ClusterName: istio-oidc
+        ClusterName: outbound|8080||istio-oidc.%(namespace)s.svc.cluster.local
       Replication:
         Mode: dns
         PeerAddress:
@@ -17,6 +17,7 @@ function(namespace, keycloak_url) {
       Keycloak:
         URL: %(keycloak_url)s
     ||| % {
+      namespace: namespace,
       keycloak_url: keycloak_url,
     },
   },
