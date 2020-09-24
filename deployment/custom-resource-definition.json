@@ -1,0 +1,191 @@
+{
+  "apiVersion": "apiextensions.k8s.io/v1beta1",
+  "kind": "CustomResourceDefinition",
+  "metadata": {
+    "annotations": {
+      "controller-gen.kubebuilder.io/version": "v0.3.0"
+    },
+    "creationTimestamp": null,
+    "name": "accesspolicies.krsdev.app"
+  },
+  "spec": {
+    "additionalPrinterColumns": [
+      {
+        "JSONPath": ".spec.gateway",
+        "name": "Gateway",
+        "type": "string"
+      },
+      {
+        "JSONPath": ".spec.realm",
+        "name": "Realm",
+        "type": "string"
+      }
+    ],
+    "group": "krsdev.app",
+    "names": {
+      "kind": "AccessPolicy",
+      "listKind": "AccessPolicyList",
+      "plural": "accesspolicies",
+      "shortNames": [
+        "ap"
+      ],
+      "singular": "accesspolicy"
+    },
+    "scope": "Namespaced",
+    "subresources": {
+      "status": {}
+    },
+    "validation": {
+      "openAPIV3Schema": {
+        "properties": {
+          "apiVersion": {
+            "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+            "type": "string"
+          },
+          "kind": {
+            "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "spec": {
+            "properties": {
+              "gateway": {
+                "type": "string"
+              },
+              "oidc": {
+                "properties": {
+                  "callbackPath": {
+                    "pattern": "^\\/[A-Za-z0-9\\-._~!$\u0026'()*+,;=:@\\/%]*$|^$",
+                    "type": "string"
+                  },
+                  "credentialsSecretRef": {
+                    "properties": {
+                      "clientIDKey": {
+                        "type": "string"
+                      },
+                      "clientSecretKey": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "name"
+                    ],
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "credentialsSecretRef"
+                ],
+                "type": "object"
+              },
+              "realm": {
+                "type": "string"
+              },
+              "routes": {
+                "items": {
+                  "properties": {
+                    "disableAccessPolicy": {
+                      "type": "boolean"
+                    },
+                    "headers": {
+                      "items": {
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "roles": {
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "value": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "roles"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "roles": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "gateway",
+              "oidc",
+              "realm"
+            ],
+            "type": "object"
+          },
+          "status": {
+            "properties": {
+              "ingress": {
+                "properties": {
+                  "selector": {
+                    "additionalProperties": {
+                      "type": "string"
+                    },
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "selector"
+                ],
+                "type": "object"
+              },
+              "virtualHosts": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "metadata",
+          "spec"
+        ],
+        "type": "object"
+      }
+    },
+    "version": "v1",
+    "versions": [
+      {
+        "name": "v1",
+        "served": true,
+        "storage": true
+      }
+    ]
+  },
+  "status": {
+    "acceptedNames": {
+      "kind": "",
+      "plural": ""
+    },
+    "conditions": [],
+    "storedVersions": []
+  }
+}

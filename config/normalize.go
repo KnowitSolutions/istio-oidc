@@ -107,6 +107,7 @@ func (r *replication) normalize() {
 		os.Exit(1)
 	}
 
+	// TODO: Load from pod IP interface
 	if r.AdvertiseAddress == "" {
 		err := errors.New("missing advertise address")
 		log.Error(nil, err, "Failed loading config")

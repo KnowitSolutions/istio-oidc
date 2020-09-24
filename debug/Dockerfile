@@ -1,7 +1,7 @@
 FROM golang:1.14 AS builder
 WORKDIR /build
 
-RUN apt-get update && apt-get install --yes protobuf-compiler
+RUN apt-get update && apt-get install --yes git protobuf-compiler
 RUN go get github.com/go-delve/delve/cmd/dlv
 COPY go.mod .
 COPY go.sum .

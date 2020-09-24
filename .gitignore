@@ -1,4 +1,2 @@
-api/*.yaml
-controller/*.yaml
 zz_generated.deepcopy.go
 *.pb.go

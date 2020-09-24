@@ -1,11 +1,7 @@
-.git/
-.gitignore
 .dockerignore
 **/Dockerfile
 .idea/
 
-api/**/*.yaml
-controller/**/*.yaml
 debug/
 **/zz_generated.deepcopy.go
 **/*.pb.go
