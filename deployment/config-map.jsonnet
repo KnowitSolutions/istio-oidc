@@ -12,7 +12,7 @@ function(namespace, keycloak_url) {
       Replication:
         Mode: dns
         PeerAddress:
-          Service: grpc
+          Service: tcp
           Domain: istio-oidc-discovery
       Keycloak:
         URL: %(keycloak_url)s

@@ -10,7 +10,7 @@ function(namespace) {
     publishNotReadyAddresses: true,
     selector: { app: 'istio-oidc' },
     ports: [
-      { name: 'grpc', port: 8080, targetPort: 'grpc' },
+      { name: 'tcp', port: 8080, targetPort: 'grpc' },
     ],
   },
 }

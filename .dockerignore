@@ -3,5 +3,6 @@
 .idea/
 
 debug/
+deployment/
 **/zz_generated.deepcopy.go
 **/*.pb.go
