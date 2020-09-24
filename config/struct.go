@@ -57,8 +57,8 @@ type replication struct {
 }
 
 type replicationPeerAddress struct {
-	Domain  string
-	Service string
+	Domain  string `yaml:"Domain"`
+	Service string `yaml:"Service"`
 }
 
 // TODO: Make generic. Don't assume Keycloak

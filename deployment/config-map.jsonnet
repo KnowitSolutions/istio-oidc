@@ -13,9 +13,11 @@ function(namespace, keycloak_url) {
         Mode: dns
         PeerAddress:
           Service: grpc
-          Domain: istio-oidc
+          Domain: istio-oidc-discovery
       Keycloak:
         URL: %(keycloak_url)s
-    |||,
+    ||| % {
+      keycloak_url: keycloak_url,
+    },
   },
 }

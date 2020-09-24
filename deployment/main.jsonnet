@@ -5,6 +5,7 @@ local customResourceDefinition = import 'custom-resource-definition.json';
 local deployment = import 'deployment.jsonnet';
 local namespace = import 'namespace.jsonnet';
 local serviceAccount = import 'service-account.jsonnet';
+local serviceDiscovery = import 'service-discovery.jsonnet';
 local service = import 'service.jsonnet';
 
 function(
@@ -19,6 +20,7 @@ function(
   clusterRoleBinding(NAMESPACE),
   serviceAccount(NAMESPACE),
   service(NAMESPACE),
+  serviceDiscovery(NAMESPACE),
   configMap(NAMESPACE, KEYCLOAK_URL),
   deployment(NAMESPACE, VERSION, ANNOTATIONS),
 ]

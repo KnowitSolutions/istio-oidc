@@ -42,6 +42,7 @@ function(namespace, version, annotations) {
         volumes: [
           { name: 'config', configMap: { name: 'istio-oidc' } },
         ],
+        serviceAccountName: 'istio-oidc',
       },
     },
   },

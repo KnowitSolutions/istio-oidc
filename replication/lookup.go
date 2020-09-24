@@ -37,16 +37,27 @@ func (dnsEndpoints) lookupEndpoints(ctx context.Context) ([]string, error) {
 	svc := config.Replication.PeerAddress.Service
 	name := config.Replication.PeerAddress.Domain
 
-	_, addrs, err := net.DefaultResolver.LookupSRV(ctx, svc, "tcp", name)
+	_, srvs, err := net.DefaultResolver.LookupSRV(ctx, svc, "tcp", name)
 	if err != nil {
 		err := errors.Wrap(err, "failed looking up endpoints")
 		return nil, err
 	}
 
-	eps := make([]string, len(addrs))
-	for i := range addrs {
-		eps[i] = fmt.Sprintf("%s:%d", addrs[i].Target, addrs[i].Port)
+	eps := make([]string, 0, len(srvs))
+
+	for _, srv := range srvs {
+		ips, err := net.DefaultResolver.LookupIPAddr(ctx, srv.Target)
+		if err != nil {
+			err := errors.Wrap(err, "failed resolving endpoint")
+			return nil, err
+		}
+
+		for _, ip := range ips {
+			ep := fmt.Sprintf("%s:%d", ip.IP, srv.Port)
+			eps = append(eps, ep)
+		}
 	}
+
 	return eps, nil
 }
 
