@@ -1,4 +1,4 @@
-function(namespace, version, annotations) {
+function(namespace, version, replicas, annotations) {
   apiVersion: 'apps/v1',
   kind: 'Deployment',
   metadata: {
@@ -7,6 +7,7 @@ function(namespace, version, annotations) {
     annotations: annotations,
   },
   spec: {
+    replicas: replicas,
     selector: { matchLabels: { app: 'istio-oidc' } },
     template: {
       metadata: {

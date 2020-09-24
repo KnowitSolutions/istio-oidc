@@ -12,6 +12,7 @@ local service = import 'service.jsonnet';
 function(
   NAMESPACE,
   VERSION,
+  REPLICAS=2,
   ANNOTATIONS={},
   KEYCLOAK_URL
 ) [
@@ -24,5 +25,5 @@ function(
   serviceDiscovery(NAMESPACE),
   destinationRuleDiscovery(NAMESPACE),
   configMap(NAMESPACE, KEYCLOAK_URL),
-  deployment(NAMESPACE, VERSION, ANNOTATIONS),
+  deployment(NAMESPACE, VERSION, REPLICAS, ANNOTATIONS),
 ]
