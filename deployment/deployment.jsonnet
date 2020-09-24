@@ -12,7 +12,10 @@ function(namespace, version, replicas, annotations) {
     template: {
       metadata: {
         labels: { app: 'istio-oidc' },
-        annotations: annotations,
+        annotations: annotations {
+          'prometheus.io/scrape': 'true',
+          'prometheus.io/port': '8081',
+        },
       },
       spec: {
         containers: [
