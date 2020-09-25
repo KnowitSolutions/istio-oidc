@@ -5,13 +5,14 @@ function(namespace, version, replicas, annotations, affinity, tolerations) {
     namespace: namespace,
     name: 'istio-oidc',
     annotations: annotations,
+    labels: { app: 'istio-oidc', version: version },
   },
   spec: {
     replicas: replicas,
     selector: { matchLabels: { app: 'istio-oidc' } },
     template: {
       metadata: {
-        labels: { app: 'istio-oidc' },
+        labels: { app: 'istio-oidc', version: version },
         annotations: annotations {
           'prometheus.io/scrape': 'true',
           'prometheus.io/port': '8081',
