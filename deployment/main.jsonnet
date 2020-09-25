@@ -13,7 +13,11 @@ function(
   NAMESPACE,
   VERSION,
   REPLICAS=2,
+
   ANNOTATIONS={},
+  AFFINITY={},
+  TOLERATIONS=[],
+
   KEYCLOAK_URL
 ) [
   namespace(NAMESPACE),
@@ -25,5 +29,5 @@ function(
   serviceDiscovery(NAMESPACE),
   destinationRuleDiscovery(NAMESPACE),
   configMap(NAMESPACE, KEYCLOAK_URL),
-  deployment(NAMESPACE, VERSION, REPLICAS, ANNOTATIONS),
+  deployment(NAMESPACE, VERSION, REPLICAS, ANNOTATIONS, AFFINITY, TOLERATIONS),
 ]

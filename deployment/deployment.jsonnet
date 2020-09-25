@@ -1,4 +1,4 @@
-function(namespace, version, replicas, annotations) {
+function(namespace, version, replicas, annotations, affinity, tolerations) {
   apiVersion: 'apps/v1',
   kind: 'Deployment',
   metadata: {
@@ -18,6 +18,7 @@ function(namespace, version, replicas, annotations) {
         },
       },
       spec: {
+        affinity: affinity,
         containers: [
           {
             name: 'istio-oidc',
@@ -43,10 +44,11 @@ function(namespace, version, replicas, annotations) {
             },
           },
         ],
+        serviceAccountName: 'istio-oidc',
+        tolerations: tolerations,
         volumes: [
           { name: 'config', configMap: { name: 'istio-oidc' } },
         ],
-        serviceAccountName: 'istio-oidc',
       },
     },
   },
