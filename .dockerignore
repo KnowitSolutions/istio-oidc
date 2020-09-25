@@ -1,8 +1,11 @@
-.dockerignore
-**/Dockerfile
 .idea/
+.dockerignore
+Dockerfile
 
 debug/
 deployment/
 **/zz_generated.deepcopy.go
 **/*.pb.go
+
+README.md
+LICENSE
