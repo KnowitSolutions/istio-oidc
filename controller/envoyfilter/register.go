@@ -48,7 +48,7 @@ func register(mgr ctrl.Manager) error {
 	err = c.Watch(
 		&source.Kind{Type: &api.AccessPolicy{}},
 		&handler.EnqueueRequestsFromMapFunc{ToRequests: &mapper{mgr.GetClient()}},
-		&predicate.GenerationChangedPredicate{})
+		&predicate.ResourceVersionChangedPredicate{})
 	if err != nil {
 		return err
 	}

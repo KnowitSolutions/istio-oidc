@@ -90,7 +90,7 @@ func registerWorker(mgr ctrl.Manager, apStore state.AccessPolicyStore) error {
 	err = c.Watch(
 		&source.Kind{Type: &api.AccessPolicy{}},
 		&handler.EnqueueRequestForObject{},
-		&predicate.GenerationChangedPredicate{})
+		&predicate.ResourceVersionChangedPredicate{})
 	if err != nil {
 		return err
 	}
