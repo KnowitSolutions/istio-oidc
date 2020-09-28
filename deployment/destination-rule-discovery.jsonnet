@@ -3,7 +3,7 @@ function(namespace) {
   kind: 'DestinationRule',
   metadata: {
     namespace: namespace,
-    name: 'istio-oidc',
+    name: 'istio-oidc-discovery',
   },
   spec: {
     host: 'istio-oidc-discovery',
