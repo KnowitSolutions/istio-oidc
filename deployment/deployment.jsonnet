@@ -34,10 +34,7 @@ function(namespace, version, replicas, annotations, affinity, tolerations) {
             ],
             livenessProbe: { httpGet: { port: 'http-telemetry', path: '/health' } },
             readinessProbe: { httpGet: { port: 'http-telemetry', path: '/ready' } },
-            resources: {
-              requests: { cpu: '10m', memory: '64Mi' },
-              limits: { cpu: '10m', memory: '64Mi' },
-            },
+            resources: { limits: { cpu: '50m', memory: '128Mi' } },
             securityContext: {
               runAsUser: 1000,
               runAsGroup: 1000,
