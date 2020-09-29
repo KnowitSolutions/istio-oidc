@@ -5,8 +5,5 @@ ExtAuthz:
   ClusterName: istio-oidc
   Timeout: 1h
 
-Replication:
-  AdvertiseAddress: # TODO: Set your IP and port here
-
 Keycloak:
   URL: # TODO: Set Keycloak URL
