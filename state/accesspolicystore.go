@@ -9,7 +9,7 @@ import (
 
 type AccessPolicyStore interface {
 	GetAccessPolicy(string) *accesspolicy.AccessPolicy
-	UpdateAccessPolicy(context.Context, *accesspolicy.AccessPolicy)
+	UpdateAccessPolicy(context.Context, *accesspolicy.AccessPolicy) error
 	DeleteAccessPolicy(context.Context, string)
 }
 
@@ -30,14 +30,10 @@ func (aps *accessPolicyStore) GetAccessPolicy(name string) *accesspolicy.AccessP
 	return aps.entries[name]
 }
 
-func (aps *accessPolicyStore) UpdateAccessPolicy(ctx context.Context, pol *accesspolicy.AccessPolicy) {
-	go aps.updateAccessPolicy(ctx, pol)
-}
-
-func (aps *accessPolicyStore) updateAccessPolicy(ctx context.Context, pol *accesspolicy.AccessPolicy) {
+func (aps *accessPolicyStore) UpdateAccessPolicy(ctx context.Context, pol *accesspolicy.AccessPolicy) error {
 	err := pol.UpdateOidcProvider(ctx)
 	if err != nil {
-		log.Error(ctx, err, "Error while loading access policy")
+		return err
 	}
 
 	aps.entriesMu.Lock()
@@ -45,7 +41,8 @@ func (aps *accessPolicyStore) updateAccessPolicy(ctx context.Context, pol *acces
 	aps.entriesMu.Unlock()
 
 	vals := log.MakeValues("AccessPolicy", pol.Name)
-	log.Info(ctx, vals,"Updated OIDC settings")
+	log.Info(ctx, vals, "Updated OIDC settings")
+	return nil
 }
 
 func (aps *accessPolicyStore) DeleteAccessPolicy(ctx context.Context, name string) {
@@ -54,5 +51,5 @@ func (aps *accessPolicyStore) DeleteAccessPolicy(ctx context.Context, name strin
 	aps.entriesMu.Unlock()
 
 	vals := log.MakeValues("AccessPolicy", name)
-	log.Info(ctx, vals,"Deleted OIDC settings")
+	log.Info(ctx, vals, "Deleted OIDC settings")
 }

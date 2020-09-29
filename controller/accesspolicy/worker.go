@@ -52,7 +52,10 @@ func (r *workerReconciler) reconcileAuth(ctx context.Context, ap *api.AccessPoli
 		}
 
 		log.Info(ctx, nil, "Updating OIDC settings")
-		r.UpdateAccessPolicy(ctx, cfg)
+		err = r.UpdateAccessPolicy(ctx, cfg)
+		if err != nil {
+			return errors.Wrap(err, "failed updating OIDC settings")
+		}
 	} else {
 		log.Info(ctx, nil, "Deleting OIDC settings")
 		r.DeleteAccessPolicy(ctx, ap.Name)
