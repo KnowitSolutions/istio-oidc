@@ -9,6 +9,7 @@ import (
 	istionetworking "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -18,6 +19,7 @@ const finalizer = "finalizer.istio-oidc"
 
 type leaderReconciler struct {
 	client.Client
+	record.EventRecorder
 }
 
 func (r *leaderReconciler) Reconcile(req reconcile.Request) (reconcile.Result, error) {
@@ -68,7 +70,9 @@ func (r *leaderReconciler) reconcileStatus(ctx context.Context, ap *api.AccessPo
 		gw := istionetworking.Gateway{}
 		err := r.Get(ctx, gwKey, &gw)
 		if err != nil {
-			return errors.Wrap(err, "failed getting Gateway")
+			log.Error(ctx, err, "Failed getting Gateway")
+			r.Event(ap, "Warning", "MissingGateway", "Failed getting gateway")
+			return nil
 		}
 
 		ap.Status.Ingress.Selector = selector(&gw)
@@ -77,7 +81,8 @@ func (r *leaderReconciler) reconcileStatus(ctx context.Context, ap *api.AccessPo
 		log.Info(ctx, nil, "Updating status")
 		err = r.Status().Update(ctx, ap)
 		if err != nil {
-			return errors.Wrap(err, "failed updating AccessPolicy status")
+			err = errors.Wrap(err, "failed updating AccessPolicy status")
+			return err
 		}
 	}
 
@@ -86,7 +91,7 @@ func (r *leaderReconciler) reconcileStatus(ctx context.Context, ap *api.AccessPo
 
 func (r *leaderReconciler) reconcileEnvoyFilter(ctx context.Context, ap *api.AccessPolicy) error {
 	if len(ap.Status.GetIngress().GetSelector()) == 0 {
-		log.Info(ctx, nil, "Missing workload selector")
+		log.Error(ctx, nil, "Missing workload selector")
 		return nil
 	}
 

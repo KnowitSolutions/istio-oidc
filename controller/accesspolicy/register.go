@@ -43,7 +43,10 @@ func Register(mgr ctrl.Manager, apStore state.AccessPolicyStore) error {
 }
 
 func registerLeader(mgr ctrl.Manager) error {
-	r := leaderReconciler{mgr.GetClient()}
+	r := leaderReconciler{
+		mgr.GetClient(),
+		mgr.GetEventRecorderFor("accesspolicy-leader"),
+	}
 	opts := controller.Options{Reconciler: &r}
 	c, err := controller.NewUnmanaged("accesspolicy-leader", mgr, opts)
 	if err != nil {
@@ -80,7 +83,11 @@ func registerLeader(mgr ctrl.Manager) error {
 }
 
 func registerWorker(mgr ctrl.Manager, apStore state.AccessPolicyStore) error {
-	r := workerReconciler{mgr.GetClient(), apStore}
+	r := workerReconciler{
+		mgr.GetClient(),
+		mgr.GetEventRecorderFor("accesspolicy-worker"),
+		apStore,
+	}
 	opts := controller.Options{Reconciler: &r}
 	c, err := controller.NewUnmanaged("accesspolicy-worker", mgr, opts)
 	if err != nil {

@@ -10,12 +10,14 @@ import (
 	core "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 type workerReconciler struct {
 	client.Client
+	record.EventRecorder
 	state.AccessPolicyStore
 }
 
@@ -42,18 +44,22 @@ func (r *workerReconciler) reconcileAuth(ctx context.Context, ap *api.AccessPoli
 		cred := core.Secret{}
 		err := r.Get(ctx, credKey, &cred)
 		if err != nil {
-			return errors.Wrap(err, "failed getting credentials Secret")
+			log.Error(ctx, err, "Failed getting credentials secret")
+			r.Event(ap, "Warning", "MissingCredentials", "Failed getting credentials secret")
+			return nil
 		}
 
 		cfg, err := accesspolicy.NewAccessPolicy(ap, &cred)
 		if err != nil {
 			log.Error(ctx, err, "Invalid AccessPolicy")
+			r.Event(ap, "Warning", "Invalid", "Invalid AccessPolicy")
 			return nil
 		}
 
 		log.Info(ctx, nil, "Updating OIDC settings")
 		err = r.UpdateAccessPolicy(ctx, cfg)
 		if err != nil {
+			r.Event(ap, "Warning", "MissingOIDC", "Failed updating OIDC settings from identity provider")
 			return errors.Wrap(err, "failed updating OIDC settings")
 		}
 	} else {
