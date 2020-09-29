@@ -20,6 +20,7 @@ type controller struct {
 	EnvoyFilterNamePrefix string            `yaml:"EnvoyFilterNamePrefix"`
 	EnvoyFilterLabels     map[string]string `yaml:"EnvoyFilterLabels"`
 
+	LeaderElection          bool   `yaml:"LeaderElection"`
 	LeaderElectionNamespace string `yaml:"LeaderElectionNamespace"`
 	LeaderElectionName      string `yaml:"LeaderElectionName"`
 

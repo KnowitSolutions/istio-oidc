@@ -36,7 +36,7 @@ func (c *controller) normalize() {
 		}
 	}
 
-	if c.LeaderElectionNamespace == "" {
+	if c.LeaderElection && c.LeaderElectionNamespace == "" {
 		ns, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
 		if err != nil {
 			err = errors.New("missing leader election namespace")

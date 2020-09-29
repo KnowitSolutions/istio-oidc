@@ -7,6 +7,8 @@ function(namespace, keycloak_url) {
   },
   data: {
     'config.yaml': |||
+      Controller:
+        LeaderElection: true
       ExtAuthz:
         ClusterName: outbound|8080||istio-oidc.%(namespace)s.svc.cluster.local
       Replication:

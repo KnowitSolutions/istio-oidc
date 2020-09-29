@@ -71,7 +71,7 @@ func startCtrl(
 		Scheme:                  scheme,
 		HealthProbeBindAddress:  "0",
 		MetricsBindAddress:      "0",
-		LeaderElection:          true,
+		LeaderElection:          config.Controller.LeaderElection,
 		LeaderElectionNamespace: config.Controller.LeaderElectionNamespace,
 		LeaderElectionID:        config.Controller.LeaderElectionName,
 	}
