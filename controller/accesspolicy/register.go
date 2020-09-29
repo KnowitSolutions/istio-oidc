@@ -98,7 +98,7 @@ func registerWorker(mgr ctrl.Manager, apStore state.AccessPolicyStore) error {
 	err = c.Watch(
 		&source.Kind{Type: &core.Secret{}},
 		&handler.EnqueueRequestsFromMapFunc{ToRequests: newSecretMapper(mgr)},
-		&predicate.GenerationChangedPredicate{})
+		&predicate.ResourceVersionChangedPredicate{})
 	if err != nil {
 		return err
 	}

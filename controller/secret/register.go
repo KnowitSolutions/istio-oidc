@@ -56,7 +56,7 @@ func registerLeader(mgr ctrl.Manager) error {
 	err = c.Watch(
 		&source.Kind{Type: &core.Secret{}},
 		&handler.EnqueueRequestForObject{},
-		&predicate.GenerationChangedPredicate{},
+		&predicate.ResourceVersionChangedPredicate{},
 		&predicate.InNamespace{Namespace: config.Controller.TokenKeyNamespace},
 		&predicate.IsNamed{Name: config.Controller.TokenKeyName})
 	if err != nil {
@@ -77,7 +77,7 @@ func registerWorker(mgr ctrl.Manager, keyStore state.KeyStore) error {
 	err = c.Watch(
 		&source.Kind{Type: &core.Secret{}},
 		&handler.EnqueueRequestForObject{},
-		&predicate.GenerationChangedPredicate{},
+		&predicate.ResourceVersionChangedPredicate{},
 		&predicate.InNamespace{Namespace: config.Controller.TokenKeyNamespace},
 		&predicate.IsNamed{Name: config.Controller.TokenKeyName})
 	if err != nil {
