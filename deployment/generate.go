@@ -20,13 +20,12 @@ func main() {
 }
 
 func root() string {
-	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
-	buf, err := cmd.Output()
+	loc, err := os.Getwd()
 	if err != nil {
 		panic(err.Error())
 	}
 
-	loc := string(buf[:len(buf)-1])
+	loc = path.Dir(loc)
 	return loc
 }
 
