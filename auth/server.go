@@ -10,7 +10,6 @@ import (
 )
 
 type Server struct {
-	state.KeyStore
 	state.AccessPolicyStore
 	state.SessionStore
 	replication.Client

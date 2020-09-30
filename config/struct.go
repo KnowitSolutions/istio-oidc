@@ -23,9 +23,6 @@ type controller struct {
 	LeaderElection          bool   `yaml:"LeaderElection"`
 	LeaderElectionNamespace string `yaml:"LeaderElectionNamespace"`
 	LeaderElectionName      string `yaml:"LeaderElectionName"`
-
-	TokenKeyNamespace string `yaml:"TokenKeyNamespace"`
-	TokenKeyName      string `yaml:"TokenKeyName"`
 }
 
 type service struct {

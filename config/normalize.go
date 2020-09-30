@@ -50,21 +50,6 @@ func (c *controller) normalize() {
 	if c.LeaderElectionName == "" {
 		c.LeaderElectionName = "istio-oidc"
 	}
-
-	if c.TokenKeyNamespace == "" {
-		ns, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
-		if err != nil {
-			err = errors.New("missing token key namespace")
-			log.Error(nil, err, "Failed loading config")
-			os.Exit(1)
-		}
-
-		c.TokenKeyNamespace = string(ns)
-	}
-
-	if c.TokenKeyName == "" {
-		c.TokenKeyName = "istio-oidc"
-	}
 }
 
 func (s *service) normalize() {

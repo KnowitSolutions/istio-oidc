@@ -36,7 +36,6 @@ func main() {
 	vals := log.MakeValues("id", id)
 	log.Info(nil, vals, "Assigned peer ID")
 
-	keyStore := state.NewKeyStore()
 	apStore := state.NewAccessPolicyStore()
 	sessStore, err := state.NewSessionStore(id)
 	if err != nil {
@@ -49,14 +48,13 @@ func main() {
 
 	init := make(chan struct{})
 
-	go startCtrl(keyStore, apStore)
-	go startGrpc(keyStore, apStore, sessStore, self, peers, init)
+	go startCtrl(apStore)
+	go startGrpc(apStore, sessStore, self, peers, init)
 	go startTelemetry(init)
 	select {}
 }
 
 func startCtrl(
-	keyStore state.KeyStore,
 	apStore state.AccessPolicyStore,
 ) {
 	ctrl.SetLogger(log.Shim)
@@ -83,7 +81,7 @@ func startCtrl(
 		os.Exit(1)
 	}
 
-	err = controller.Register(mgr, keyStore, apStore)
+	err = controller.Register(mgr, apStore)
 	if err != nil {
 		log.Error(nil, err, "Unable to register controllers")
 		os.Exit(1)
@@ -97,7 +95,6 @@ func startCtrl(
 }
 
 func startGrpc(
-	keyStore state.KeyStore,
 	apStore state.AccessPolicyStore,
 	sessStore state.SessionStore,
 	self *replication.Self,
@@ -112,7 +109,7 @@ func startGrpc(
 	}
 
 	srv := grpc.NewServer()
-	startExtAuthz(srv, keyStore, apStore, sessStore, self, peers)
+	startExtAuthz(srv, apStore, sessStore, self, peers)
 	startReplication(srv, self, peers, init)
 
 	err = srv.Serve(lis)
@@ -124,14 +121,12 @@ func startGrpc(
 
 func startExtAuthz(
 	srv *grpc.Server,
-	keyStore state.KeyStore,
 	apStore state.AccessPolicyStore,
 	sessStore state.SessionStore,
 	self *replication.Self,
 	peers *replication.Peers,
 ) {
 	extAuth := auth.Server{
-		KeyStore:          keyStore,
 		AccessPolicyStore: apStore,
 		SessionStore:      sessStore,
 		Client:            replication.Client{Self: self, Peers: peers},

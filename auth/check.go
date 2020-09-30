@@ -67,7 +67,7 @@ func (srv *Server) isAuthenticated(ctx context.Context, req *request) bool {
 		return false
 	}
 
-	err := parseToken(srv.GetKey(), token, &req.claims)
+	err := parseToken(req.policy.Oidc.TokenSecret, token, &req.claims)
 	if err != nil {
 		log.Error(ctx, err, "Unable to check authentication")
 		return false
@@ -85,7 +85,7 @@ func (srv *Server) startOidc(ctx context.Context, req *request) *response {
 	log.Info(ctx, nil, "Starting OIDC")
 
 	claims := &stateClaims{Path: req.url.Path}
-	tok, err := makeToken(srv.GetKey(), claims, time.Time{})
+	tok, err := makeToken(req.policy.Oidc.TokenSecret, claims, time.Time{})
 	if err != nil {
 		log.Error(ctx, err, "Unable to start OIDC flow")
 		return &response{status: http.StatusInternalServerError}
@@ -109,7 +109,7 @@ func (srv *Server) finishOidc(ctx context.Context, req *request) *response {
 	}
 
 	claims := &stateClaims{}
-	err := parseToken(srv.GetKey(), query["state"][0], claims)
+	err := parseToken(req.policy.Oidc.TokenSecret, query["state"][0], claims)
 	if err != nil {
 		log.Error(ctx, nil, "Unable to finnish OIDC flow")
 		return &response{status: http.StatusBadRequest}
@@ -157,7 +157,7 @@ func (srv *Server) setToken(ctx context.Context, req *request, token *oauth2.Tok
 	claims.Subject = data.Subject
 	claims.Roles = data.Roles
 
-	tok, err := makeToken(srv.GetKey(), claims, token.Expiry)
+	tok, err := makeToken(req.policy.Oidc.TokenSecret, claims, token.Expiry)
 	if err != nil {
 		log.Error(ctx, err, "Unable to set access token")
 		return &response{status: http.StatusInternalServerError}

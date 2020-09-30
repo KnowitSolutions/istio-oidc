@@ -53,33 +53,22 @@ func (ap *accessPolicySpecStatus) convert(name string, secret *core.Secret) (*Ac
 	}, nil
 }
 
-func (apo *accessPolicyOIDC) normalize() {
-	if apo.CredentialsSecret.ClientIDKey == "" {
-		apo.CredentialsSecret.ClientIDKey = "clientID"
-	}
-	if apo.CredentialsSecret.ClientSecretKey == "" {
-		apo.CredentialsSecret.ClientSecretKey = "clientSecret"
-	}
-	if apo.CallbackPath == "" {
-		apo.CallbackPath = "/odic/callback"
-	}
-}
-
 func (apo *accessPolicyOIDC) convert(secret *core.Secret) (Oidc, error) {
-	apo.normalize()
-
 	cb, err := url.Parse(apo.CallbackPath)
 	if err != nil {
 		return Oidc{}, err
 	}
 
 	var clientId, clientSecret string
+	var tokenSecret []byte
 	if secret != nil {
 		clientIdBytes, ok1 := secret.Data[apo.CredentialsSecret.ClientIDKey]
 		clientSecretBytes, ok2 := secret.Data[apo.CredentialsSecret.ClientSecretKey]
+		var ok3 bool
+		tokenSecret, ok3 = secret.Data[apo.CredentialsSecret.TokenSecretKey]
 
-		if !ok1 || !ok2 {
-			return Oidc{}, errors.New("failed extracting client ID and secret")
+		if !ok1 || !ok2 || !ok3 {
+			return Oidc{}, errors.New("failed extracting credentials")
 		} else {
 			clientId = string(clientIdBytes)
 			clientSecret = string(clientSecretBytes)
@@ -89,6 +78,7 @@ func (apo *accessPolicyOIDC) convert(secret *core.Secret) (Oidc, error) {
 	return Oidc{
 		ClientId:     clientId,
 		ClientSecret: clientSecret,
+		TokenSecret:  tokenSecret,
 		Callback:     *cb,
 	}, nil
 }
@@ -98,7 +88,7 @@ func (apr *accessPolicyRoute) convert() Route {
 	headers := accessPolicyRouteHeaders(apr.Headers)
 
 	return Route{
-		EnableAuthz: !apr.DisableAccessPolicy,
+		EnableAuthz: !apr.DisableEnforcement,
 		Roles:       roles.convert(),
 		Headers:     headers.convert(),
 	}

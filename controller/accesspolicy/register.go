@@ -70,6 +70,14 @@ func registerLeader(mgr ctrl.Manager) error {
 	}
 
 	err = c.Watch(
+		&source.Kind{Type: &core.Secret{}},
+		&handler.EnqueueRequestsFromMapFunc{ToRequests: newSecretMapper(mgr)},
+		&predicate.ResourceVersionChangedPredicate{})
+	if err != nil {
+		return err
+	}
+
+	err = c.Watch(
 		&source.Kind{Type: &istionetworking.EnvoyFilter{}},
 		&handler.EnqueueRequestsFromMapFunc{ToRequests: newEnvoyFilterMapper(mgr)},
 		&predicate.GenerationChangedPredicate{},

@@ -33,39 +33,46 @@ func (r *workerReconciler) Reconcile(req reconcile.Request) (reconcile.Result, e
 		return reconcile.Result{}, errors.Wrap(err, "failed getting AccessPolicy")
 	}
 
-	err = r.reconcileAuth(ctx, &ap)
+	if ap.DeletionTimestamp.IsZero() {
+		err = r.reconcileAuth(ctx, &ap)
+	} else {
+		err = r.deleteAuth(ctx, &ap)
+	}
+
 	return reconcile.Result{}, err
 }
 
 func (r *workerReconciler) reconcileAuth(ctx context.Context, ap *api.AccessPolicy) error {
-	if ap.DeletionTimestamp.IsZero() {
-		credName := ap.Spec.OIDC.CredentialsSecret.Name
-		credKey := types.NamespacedName{Namespace: ap.Namespace, Name: credName}
-		cred := core.Secret{}
-		err := r.Get(ctx, credKey, &cred)
-		if err != nil {
-			log.Error(ctx, err, "Failed getting credentials secret")
-			r.Event(ap, "Warning", "MissingCredentials", "Failed getting credentials secret")
-			return nil
-		}
-
-		cfg, err := accesspolicy.NewAccessPolicy(ap, &cred)
-		if err != nil {
-			log.Error(ctx, err, "Invalid AccessPolicy")
-			r.Event(ap, "Warning", "Invalid", "Invalid AccessPolicy")
-			return nil
-		}
-
-		log.Info(ctx, nil, "Updating OIDC settings")
-		err = r.UpdateAccessPolicy(ctx, cfg)
-		if err != nil {
-			r.Event(ap, "Warning", "MissingOIDC", "Failed updating OIDC settings from identity provider")
-			return errors.Wrap(err, "failed updating OIDC settings")
-		}
-	} else {
-		log.Info(ctx, nil, "Deleting OIDC settings")
-		r.DeleteAccessPolicy(ctx, ap.Name)
+	credName := ap.Spec.OIDC.CredentialsSecret.Name
+	credKey := types.NamespacedName{Namespace: ap.Namespace, Name: credName}
+	cred := core.Secret{}
+	err := r.Get(ctx, credKey, &cred)
+	if err != nil {
+		log.Error(ctx, err, "Failed getting credentials secret")
+		r.Event(ap, "Warning", "MissingCredentials", "Failed getting credentials secret")
+		return nil
 	}
+
+	cfg, err := accesspolicy.NewAccessPolicy(ap, &cred)
+	if err != nil {
+		log.Error(ctx, err, "Invalid AccessPolicy")
+		r.Event(ap, "Warning", "Invalid", "Invalid AccessPolicy")
+		return nil
+	}
+
+	log.Info(ctx, nil, "Updating OIDC settings")
+	err = r.UpdateAccessPolicy(ctx, cfg)
+	if err != nil {
+		r.Event(ap, "Warning", "MissingOIDC", "Failed updating OIDC settings from identity provider")
+		return errors.Wrap(err, "failed updating OIDC settings")
+	}
+
+	return nil
+}
+
+func (r *workerReconciler) deleteAuth(ctx context.Context, ap *api.AccessPolicy) error {
+	log.Info(ctx, nil, "Deleting OIDC settings")
+	r.DeleteAccessPolicy(ctx, ap.Name)
 
 	return nil
 }

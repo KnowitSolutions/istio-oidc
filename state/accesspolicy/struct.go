@@ -24,6 +24,7 @@ type Oidc struct {
 	oidcProvider
 	ClientId     string
 	ClientSecret string
+	TokenSecret  []byte
 	Callback     url.URL
 }
 
