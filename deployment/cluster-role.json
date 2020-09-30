@@ -71,6 +71,17 @@
     },
     {
       "apiGroups": [
+        "krsdev.app"
+      ],
+      "resources": [
+        "openidproviders"
+      ],
+      "verbs": [
+        "get"
+      ]
+    },
+    {
+      "apiGroups": [
         "networking.istio.io"
       ],
       "resources": [

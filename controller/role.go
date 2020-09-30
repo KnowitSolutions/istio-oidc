@@ -4,6 +4,7 @@ package controller
 // +kubebuilder:rbac:groups="",resources=configmaps,verbs=create;get;update
 
 // Controllers
+// +kubebuilder:rbac:groups=krsdev.app,resources=openidproviders,verbs=get
 // +kubebuilder:rbac:groups=krsdev.app,resources=accesspolicies,verbs=get;list;update;watch
 // +kubebuilder:rbac:groups=krsdev.app,resources=accesspolicies/status,verbs=update
 // +kubebuilder:rbac:groups=networking.istio.io,resources=gateways,verbs=get;list;watch

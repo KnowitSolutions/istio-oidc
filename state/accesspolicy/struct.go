@@ -13,7 +13,6 @@ const (
 
 type AccessPolicy struct {
 	Name         string
-	Realm        string
 	Oidc         Oidc
 	Default      Route
 	Routes       Routes
@@ -21,7 +20,8 @@ type AccessPolicy struct {
 }
 
 type Oidc struct {
-	oidcProvider
+	openidProvider
+	Issuer       string
 	ClientId     string
 	ClientSecret string
 	TokenSecret  []byte
@@ -45,7 +45,7 @@ type Header struct {
 }
 
 func (ap *AccessPolicy) UpdateOidcProvider(ctx context.Context) error {
-	return ap.Oidc.updateOidcProvider(ctx, ap.Realm)
+	return ap.Oidc.updateOidcProvider(ctx, ap.Oidc.Issuer)
 }
 
 func (oidc Oidc) IsCallback(url url.URL) bool {

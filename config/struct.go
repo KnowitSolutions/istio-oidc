@@ -10,7 +10,6 @@ type config struct {
 	ExtAuthz    extAuthz    `yaml:"ExtAuthz"`
 	Sessions    sessions    `yaml:"Sessions"`
 	Replication replication `yaml:"Replication"`
-	Keycloak    keycloak    `yaml:"Keycloak"`
 	Telemetry   telemetry   `yaml:"Telemetry"`
 }
 
@@ -57,11 +56,6 @@ type replication struct {
 type replicationPeerAddress struct {
 	Domain  string `yaml:"Domain"`
 	Service string `yaml:"Service"`
-}
-
-// TODO: Make generic. Don't assume Keycloak
-type keycloak struct {
-	Url string `yaml:"URL"`
 }
 
 type telemetry struct {

@@ -3,7 +3,6 @@ package accesspolicy
 import (
 	"context"
 	"encoding/json"
-	"github.com/KnowitSolutions/istio-oidc/config"
 	"github.com/KnowitSolutions/istio-oidc/log/errors"
 	"golang.org/x/oauth2"
 	"gopkg.in/square/go-jose.v2"
@@ -12,17 +11,16 @@ import (
 	"time"
 )
 
-type oidcProvider struct {
+type openidProvider struct {
 	AuthorizationEndpoint string `json:"authorization_endpoint"`
 	TokenEndpoint         string `json:"token_endpoint"`
 	JWKsURI               string `json:"jwks_uri"`
 }
 
-func (prov *oidcProvider) updateOidcProvider(ctx context.Context, realm string) error {
-	iss := config.Keycloak.Url + "/auth/realms/" + realm
+func (op *openidProvider) updateOidcProvider(ctx context.Context, iss string) error {
 	addr := iss + "/.well-known/openid-configuration"
 
-	err := doJsonRequest(ctx, addr, prov)
+	err := doJsonRequest(ctx, addr, op)
 	if err != nil {
 		err = errors.Wrap(err, "unable to fetch OIDC provider config", "issuer", iss)
 		return err
@@ -49,9 +47,9 @@ type idToken struct {
 	Subject string `json:"sub"`
 }
 
-func (prov oidcProvider) ExtractTokenData(ctx context.Context, tok *oauth2.Token) (tokenData, error) {
+func (op openidProvider) ExtractTokenData(ctx context.Context, tok *oauth2.Token) (tokenData, error) {
 	jwks := &jose.JSONWebKeySet{}
-	err := doJsonRequest(ctx, prov.JWKsURI, jwks)
+	err := doJsonRequest(ctx, op.JWKsURI, jwks)
 	if err != nil {
 		return tokenData{}, errors.Wrap(err, "unable to retrieve JWKs")
 	}
@@ -68,6 +66,7 @@ func (prov oidcProvider) ExtractTokenData(ctx context.Context, tok *oauth2.Token
 		return tokenData{}, errors.Wrap(err, "unable to get ID token claims")
 	}
 
+	// TODO: Generic way of extracting roles
 	count := len(at.RealmAccess.Roles)
 	for _, v := range at.ResourceAccess {
 		count += len(v.Roles)

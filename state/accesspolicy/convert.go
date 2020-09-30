@@ -18,13 +18,13 @@ type accessPolicyRoles []string
 type accessPolicyRouteHeaders []api.AccessPolicyRouteHeader
 type accessPolicyRouteHeader api.AccessPolicyRouteHeader
 
-func NewAccessPolicy(ap *api.AccessPolicy, secret *core.Secret) (*AccessPolicy, error) {
+func NewAccessPolicy(ap *api.AccessPolicy, op *api.OpenIDProvider, secret *core.Secret) (*AccessPolicy, error) {
 	spec := accessPolicySpecStatus{ap.Spec, ap.Status}
 	name := fmt.Sprintf("%s/%s", ap.Namespace, ap.Name)
-	return spec.convert(name, secret)
+	return spec.convert(name, op, secret)
 }
 
-func (ap *accessPolicySpecStatus) convert(name string, secret *core.Secret) (*AccessPolicy, error) {
+func (ap *accessPolicySpecStatus) convert(name string, op *api.OpenIDProvider, secret *core.Secret) (*AccessPolicy, error) {
 	oidc := accessPolicyOIDC(ap.spec.OIDC)
 
 	defRoute := Route{EnableAuthz: true}
@@ -38,14 +38,13 @@ func (ap *accessPolicySpecStatus) convert(name string, secret *core.Secret) (*Ac
 		}
 	}
 
-	oidcCfg, err := oidc.convert(secret)
+	oidcCfg, err := oidc.convert(op, secret)
 	if err != nil {
 		return nil, err
 	}
 
 	return &AccessPolicy{
 		Name:         name,
-		Realm:        ap.spec.Realm,
 		Oidc:         oidcCfg,
 		Default:      defRoute,
 		Routes:       routes,
@@ -53,10 +52,15 @@ func (ap *accessPolicySpecStatus) convert(name string, secret *core.Secret) (*Ac
 	}, nil
 }
 
-func (apo *accessPolicyOIDC) convert(secret *core.Secret) (Oidc, error) {
+func (apo *accessPolicyOIDC) convert(op *api.OpenIDProvider, secret *core.Secret) (Oidc, error) {
 	cb, err := url.Parse(apo.CallbackPath)
 	if err != nil {
 		return Oidc{}, err
+	}
+
+	var issuer string
+	if op != nil {
+		issuer = op.Spec.Issuer
 	}
 
 	var clientId, clientSecret string
@@ -76,6 +80,7 @@ func (apo *accessPolicyOIDC) convert(secret *core.Secret) (Oidc, error) {
 	}
 
 	return Oidc{
+		Issuer:       issuer,
 		ClientId:     clientId,
 		ClientSecret: clientSecret,
 		TokenSecret:  tokenSecret,

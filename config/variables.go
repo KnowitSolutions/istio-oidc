@@ -6,6 +6,5 @@ var (
 	ExtAuthz    extAuthz
 	Sessions    sessions
 	Replication replication
-	Keycloak    keycloak
 	Telemetry   telemetry
 )

@@ -32,6 +32,5 @@ func Load(filename string) {
 	ExtAuthz = cfg.ExtAuthz
 	Sessions = cfg.Sessions
 	Replication = cfg.Replication
-	Keycloak = cfg.Keycloak
 	Telemetry = cfg.Telemetry
 }

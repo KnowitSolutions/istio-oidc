@@ -58,6 +58,14 @@ func gwIsRelated(obj *handler.MapObject, ap *api.AccessPolicy) bool {
 	return ap.Spec.Gateway == obj.Meta.GetName()
 }
 
+func newOpenIdProviderMapper(mgr ctrl.Manager) handler.Mapper {
+	return &mapper{mgr.GetClient(), true, opIsRelated}
+}
+
+func opIsRelated(obj *handler.MapObject, ap *api.AccessPolicy) bool {
+	return ap.Spec.OIDC.Provider == obj.Meta.GetName()
+}
+
 func newSecretMapper(mgr ctrl.Manager) handler.Mapper {
 	return &mapper{mgr.GetClient(), true, secretIsRelated}
 }

@@ -1,4 +1,4 @@
-function(namespace, keycloak_url) {
+function(namespace) {
   apiVersion: 'v1',
   kind: 'ConfigMap',
   metadata: {
@@ -16,11 +16,8 @@ function(namespace, keycloak_url) {
         PeerAddress:
           Service: tcp
           Domain: istio-oidc-discovery
-      Keycloak:
-        URL: %(keycloak_url)s
     ||| % {
       namespace: namespace,
-      keycloak_url: keycloak_url,
     },
   },
 }

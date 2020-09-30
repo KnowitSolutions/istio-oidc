@@ -111,6 +111,14 @@ func registerWorker(mgr ctrl.Manager, apStore state.AccessPolicyStore) error {
 	}
 
 	err = c.Watch(
+		&source.Kind{Type: &api.OpenIDProvider{}},
+		&handler.EnqueueRequestsFromMapFunc{ToRequests: newOpenIdProviderMapper(mgr)},
+		&predicate.GenerationChangedPredicate{})
+	if err != nil {
+		return err
+	}
+
+	err = c.Watch(
 		&source.Kind{Type: &core.Secret{}},
 		&handler.EnqueueRequestsFromMapFunc{ToRequests: newSecretMapper(mgr)},
 		&predicate.ResourceVersionChangedPredicate{})

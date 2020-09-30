@@ -4,6 +4,7 @@ import (
 	"github.com/KnowitSolutions/istio-oidc/log/errors"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"net/url"
+	"regexp"
 )
 
 // +kubebuilder:object:root=true
@@ -16,7 +17,7 @@ type AccessPolicyList struct {
 
 // +kubebuilder:resource:path=accesspolicies,shortName=ap
 // +kubebuilder:printcolumn:name=Gateway,type=string,JSONPath=.spec.gateway
-// +kubebuilder:printcolumn:name=Realm,type=string,JSONPath=.spec.realm
+// +kubebuilder:printcolumn:name=OpenID Provider,type=string,JSONPath=.spec.oidc.provider
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 type AccessPolicy struct {
@@ -40,10 +41,8 @@ func (in *AccessPolicy) Normalize() {
 
 // +kubebuilder:object:generate=true
 type AccessPolicySpec struct {
-	Gateway string `json:"gateway"`
-
-	Realm string           `json:"realm"`
-	OIDC  AccessPolicyOIDC `json:"oidc"`
+	Gateway string           `json:"gateway"`
+	OIDC    AccessPolicyOIDC `json:"oidc"`
 
 	// +kubebuilder:validation:Optional
 	Routes []AccessPolicyRoute `json:"routes,omitempty"`
@@ -58,6 +57,8 @@ func (in *AccessPolicySpec) Normalize() {
 }
 
 type AccessPolicyOIDC struct {
+	// +kubebuilder:validation:Pattern=`^([a-z-]+/)?[a-z-.]+$`
+	Provider          string                            `json:"provider"`
 	CredentialsSecret AccessPolicyOIDCCredentialsSecret `json:"credentialsSecretRef"`
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:validation:Pattern=`^\/[A-Za-z0-9\-._~!$&'()*+,;=:@\/%]*$|^$`
@@ -65,6 +66,13 @@ type AccessPolicyOIDC struct {
 }
 
 func (in *AccessPolicyOIDC) Validate(errs []error) {
+	re := regexp.MustCompile("^([a-z-]+/)?[a-z-.]+$")
+	ok := re.MatchString(in.Provider)
+	if !ok {
+		err := errors.New("invalid OpenID provider")
+		errs = append(errs, err)
+	}
+
 	_, err := url.Parse(in.CallbackPath)
 	if err != nil {
 		err = errors.Wrap(err, "invalid callback path")

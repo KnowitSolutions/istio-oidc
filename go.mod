@@ -38,7 +38,7 @@ require (
 	istio.io/client-go v0.0.0-20200929211716-2138f5e50712
 	istio.io/gogo-genproto v0.0.0-20200929211817-4149efc1cbf0 // indirect
 	k8s.io/api v0.19.2
-	k8s.io/apiextensions-apiserver v0.19.2 // indirect
+	k8s.io/apiextensions-apiserver v0.19.2
 	k8s.io/apimachinery v0.19.2
 	k8s.io/client-go v0.19.2
 	k8s.io/klog/v2 v2.3.0
@@ -46,4 +46,5 @@ require (
 	k8s.io/utils v0.0.0-20200912215256-4140de9c8800 // indirect
 	sigs.k8s.io/controller-runtime v0.6.3
 	sigs.k8s.io/controller-tools v0.4.0
+	sigs.k8s.io/yaml v1.2.0
 )

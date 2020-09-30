@@ -1,0 +1,78 @@
+{
+  "kind": "CustomResourceDefinition",
+  "apiVersion": "apiextensions.k8s.io/v1beta1",
+  "metadata": {
+    "name": "openidproviders.krsdev.app",
+    "creationTimestamp": null,
+    "annotations": {
+      "controller-gen.kubebuilder.io/version": "v0.3.0"
+    }
+  },
+  "spec": {
+    "group": "krsdev.app",
+    "version": "v1",
+    "names": {
+      "plural": "openidproviders",
+      "singular": "openidprovider",
+      "kind": "OpenIDProvider",
+      "listKind": "OpenIDProviderList"
+    },
+    "scope": "Namespaced",
+    "validation": {
+      "openAPIV3Schema": {
+        "type": "object",
+        "required": [
+          "metadata",
+          "spec"
+        ],
+        "properties": {
+          "apiVersion": {
+            "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+            "type": "string"
+          },
+          "kind": {
+            "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "spec": {
+            "type": "object",
+            "required": [
+              "issuer"
+            ],
+            "properties": {
+              "issuer": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "subresources": {},
+    "versions": [
+      {
+        "name": "v1",
+        "served": true,
+        "storage": true
+      }
+    ],
+    "additionalPrinterColumns": [
+      {
+        "name": "Issuer",
+        "type": "string",
+        "JSONPath": ".spec.issuer"
+      }
+    ]
+  },
+  "status": {
+    "conditions": [],
+    "acceptedNames": {
+      "plural": "",
+      "kind": ""
+    },
+    "storedVersions": []
+  }
+}

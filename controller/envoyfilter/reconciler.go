@@ -101,7 +101,7 @@ func (r *reconciler) fetchAccessPolicies(ctx context.Context, ef *istionetworkin
 	aps := make([]*accesspolicy.AccessPolicy, 0, len(allAps.Items))
 	for i := range allAps.Items {
 		if reflect.DeepEqual(allAps.Items[i].Status.GetIngress().GetSelector(), ef.Spec.GetWorkloadSelector().GetLabels()) {
-			ap, err := accesspolicy.NewAccessPolicy(&allAps.Items[i], nil)
+			ap, err := accesspolicy.NewAccessPolicy(&allAps.Items[i], nil, nil)
 			if err != nil {
 				err = errors.Wrap(err, "", "AccessPolicy", allAps.Items[i].Name)
 				log.Error(ctx, err, "Invalid AccessPolicy")

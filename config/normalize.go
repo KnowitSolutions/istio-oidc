@@ -15,7 +15,6 @@ func (c *config) normalize() {
 	c.ExtAuthz.normalize()
 	c.Sessions.normalize()
 	c.Replication.normalize(c.Service.Address)
-	c.Keycloak.normalize()
 	c.Telemetry.normalize()
 }
 
@@ -104,14 +103,6 @@ func (r *replication) normalize(bindAddr string) {
 
 	if r.EstablishInterval == 0 {
 		r.EstablishInterval = time.Minute
-	}
-}
-
-func (k *keycloak) normalize() {
-	if k.Url == "" {
-		err := errors.New("missing Keycloak URL")
-		log.Error(nil, err, "Failed loading config")
-		os.Exit(1)
 	}
 }
 

@@ -1,6 +1,3 @@
 ExtAuthz:
   ClusterName: istio-oidc
   Timeout: 1h
-
-Keycloak:
-  URL: # TODO: Set Keycloak URL

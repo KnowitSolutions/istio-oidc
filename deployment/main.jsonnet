@@ -1,7 +1,8 @@
 local clusterRoleBinding = import 'cluster-role-binding.jsonnet';
 local clusterRole = import 'cluster-role.json';
 local configMap = import 'config-map.jsonnet';
-local customResourceDefinition = import 'custom-resource-definition.json';
+local customResourceDefinitionAccessPolicy = import 'custom-resource-definition-access-policy.json';
+local customResourceDefinitionOpenIDProvider = import 'custom-resource-definition-openid-provider.json';
 local deployment = import 'deployment.jsonnet';
 local destinationRuleDiscovery = import 'destination-rule-discovery.jsonnet';
 local namespace = import 'namespace.jsonnet';
@@ -17,17 +18,16 @@ function(
   ANNOTATIONS={},
   AFFINITY={},
   TOLERATIONS=[],
-
-  KEYCLOAK_URL
 ) [
   namespace(NAMESPACE),
-  customResourceDefinition,
+  customResourceDefinitionOpenIDProvider,
+  customResourceDefinitionAccessPolicy,
   clusterRole,
   clusterRoleBinding(NAMESPACE),
   serviceAccount(NAMESPACE),
   service(NAMESPACE),
   serviceDiscovery(NAMESPACE),
   destinationRuleDiscovery(NAMESPACE),
-  configMap(NAMESPACE, KEYCLOAK_URL),
+  configMap(NAMESPACE),
   deployment(NAMESPACE, VERSION, REPLICAS, ANNOTATIONS, AFFINITY, TOLERATIONS),
 ]

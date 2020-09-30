@@ -14,5 +14,6 @@ var (
 )
 
 func init() {
+	schemeBuilder.Register(&OpenIDProvider{}, &OpenIDProviderList{})
 	schemeBuilder.Register(&AccessPolicy{}, &AccessPolicyList{})
 }
