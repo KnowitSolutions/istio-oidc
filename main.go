@@ -14,6 +14,7 @@ import (
 	authv2 "github.com/envoyproxy/go-control-plane/envoy/service/auth/v2"
 	"google.golang.org/grpc"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/klog/v2"
 	"net"
 	"net/http"
 	"os"
@@ -59,6 +60,7 @@ func startCtrl(
 	apStore state.AccessPolicyStore,
 ) {
 	ctrl.SetLogger(log.Shim)
+	klog.SetLogger(log.Shim.WithName("kubernetes"))
 
 	cfg, err := ctrl.GetConfig()
 	if err != nil {

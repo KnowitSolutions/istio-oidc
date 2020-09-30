@@ -3,6 +3,7 @@ package log
 import (
 	"github.com/apex/log"
 	"github.com/go-logr/logr"
+	"strings"
 )
 
 const loggerKey = "logger"
@@ -18,6 +19,7 @@ type logger struct {
 
 func (l *logger) Info(msg string, kvs ...interface{}) {
 	fields := MakeValues(kvs...)
+	msg = strings.TrimSpace(msg)
 	l.WithFields(fields).WithField(loggerKey, l.name).Info(msg)
 }
 
