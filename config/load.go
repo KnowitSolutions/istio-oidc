@@ -25,10 +25,6 @@ func Load(filename string) {
 		os.Exit(1)
 	}
 
-	if cfg.Replication.AdvertiseAddress == "" {
-		cfg.Replication.AdvertiseAddress = os.Getenv("ADVERTISE_ADDRESS")
-	}
-
 	cfg.normalize()
 
 	Controller = cfg.Controller
