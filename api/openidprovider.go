@@ -22,6 +22,17 @@ type OpenIDProvider struct {
 	Spec OpenIDProviderSpec `json:"spec"`
 }
 
+// +kubebuilder:object:generate=true
 type OpenIDProviderSpec struct {
 	Issuer string `json:"issuer"`
+	// +kubebuilder:validation:Optional
+	RoleMappings []OpenIDProviderRoleMapping `json:"roleMappings"`
+}
+
+type OpenIDProviderRoleMapping struct {
+	// +kubebuilder:validation:Optional
+	From   string `json:"from"`
+	// +kubebuilder:validation:Optional
+	Prefix string `json:"prefix"`
+	Path   string `json:"path"`
 }

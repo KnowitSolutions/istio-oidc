@@ -5,8 +5,8 @@ import (
 	"github.com/KnowitSolutions/istio-oidc/api"
 	"github.com/KnowitSolutions/istio-oidc/log"
 	"github.com/KnowitSolutions/istio-oidc/log/errors"
-	"github.com/KnowitSolutions/istio-oidc/state"
 	"github.com/KnowitSolutions/istio-oidc/state/accesspolicy"
+	"github.com/KnowitSolutions/istio-oidc/state/openidprovider"
 	core "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -19,7 +19,7 @@ import (
 type workerReconciler struct {
 	client.Client
 	record.EventRecorder
-	state.AccessPolicyStore
+	AccessPolicies accesspolicy.Store
 }
 
 func (r *workerReconciler) Reconcile(req reconcile.Request) (reconcile.Result, error) {
@@ -73,26 +73,30 @@ func (r *workerReconciler) reconcileAuth(ctx context.Context, ap *api.AccessPoli
 		return nil
 	}
 
-	cfg, err := accesspolicy.NewAccessPolicy(ap, &op, &cred)
+	newAp, err := accesspolicy.New(ap, &cred)
 	if err != nil {
 		log.Error(ctx, err, "Invalid AccessPolicy")
 		r.Event(ap, "Warning", "Invalid", "Invalid AccessPolicy")
 		return nil
 	}
 
-	log.Info(ctx, nil, "Updating OIDC settings")
-	err = r.UpdateAccessPolicy(ctx, cfg)
+	newOp, err := openidprovider.New(ctx, &op)
 	if err != nil {
-		r.Event(ap, "Warning", "MissingOIDC", "Failed updating OIDC settings from identity provider")
-		return errors.Wrap(err, "failed updating OIDC settings")
+		log.Error(ctx, err, "Invalid OpenIDProvider")
+		r.Event(&op, "Warning", "Invalid", "Invalid OpenIDProvider")
+		return nil
 	}
+	newAp.Oidc.Provider = newOp
+
+	log.Info(ctx, nil, "Storing OIDC settings")
+	r.AccessPolicies.Update(ctx, newAp)
 
 	return nil
 }
 
 func (r *workerReconciler) deleteAuth(ctx context.Context, ap *api.AccessPolicy) error {
 	log.Info(ctx, nil, "Deleting OIDC settings")
-	r.DeleteAccessPolicy(ctx, ap.Name)
+	r.AccessPolicies.Delete(ctx, ap.Name)
 
 	return nil
 }

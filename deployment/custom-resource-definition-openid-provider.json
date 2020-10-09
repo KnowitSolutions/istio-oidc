@@ -45,6 +45,26 @@
             "properties": {
               "issuer": {
                 "type": "string"
+              },
+              "roleMappings": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "path"
+                  ],
+                  "properties": {
+                    "from": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "type": "string"
+                    },
+                    "prefix": {
+                      "type": "string"
+                    }
+                  }
+                }
               }
             }
           }

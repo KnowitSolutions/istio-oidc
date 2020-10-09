@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"github.com/KnowitSolutions/istio-oidc/api"
 	"github.com/KnowitSolutions/istio-oidc/log"
-	"github.com/KnowitSolutions/istio-oidc/state"
+	"github.com/KnowitSolutions/istio-oidc/state/session"
 	"google.golang.org/grpc/codes"
 	grpcpeer "google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
@@ -72,7 +72,7 @@ func (s Server) SetSession(ctx context.Context, req *api.SetSessionRequest) (*ap
 	vals := log.MakeValues("session", hex.EncodeToString(req.Session.Id))
 	log.Info(ctx, vals, "Received session from peer")
 
-	_, ok := s.Self.sessStore.SetSession(state.StampedSession{Session: sess, Stamp: stamp})
+	_, ok := s.Self.sessStore.Set(session.Stamped{Session: sess, Stamp: stamp})
 	if ok {
 		s.Self.update(stamp.PeerId, stamp.Serial)
 		return &api.SetSessionResponse{}, nil
@@ -95,7 +95,7 @@ func (s Server) StreamSessions(req *api.StreamSessionsRequest, stream api.Replic
 
 	log.Info(ctx, nil, "Streaming sessions to peer")
 	from := latestFromProto(req.From)
-	ch := s.Self.sessStore.StreamSessions(from)
+	ch := s.Self.sessStore.Stream(from)
 
 	for e := range ch {
 		sess := sessionToProto(e.Session)

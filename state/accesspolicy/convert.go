@@ -18,13 +18,13 @@ type accessPolicyRoles []string
 type accessPolicyRouteHeaders []api.AccessPolicyRouteHeader
 type accessPolicyRouteHeader api.AccessPolicyRouteHeader
 
-func NewAccessPolicy(ap *api.AccessPolicy, op *api.OpenIDProvider, secret *core.Secret) (*AccessPolicy, error) {
+func New(ap *api.AccessPolicy, secret *core.Secret) (*AccessPolicy, error) {
 	spec := accessPolicySpecStatus{ap.Spec, ap.Status}
 	name := fmt.Sprintf("%s/%s", ap.Namespace, ap.Name)
-	return spec.convert(name, op, secret)
+	return spec.convert(name, secret)
 }
 
-func (ap *accessPolicySpecStatus) convert(name string, op *api.OpenIDProvider, secret *core.Secret) (*AccessPolicy, error) {
+func (ap *accessPolicySpecStatus) convert(name string, secret *core.Secret) (*AccessPolicy, error) {
 	oidc := accessPolicyOIDC(ap.spec.OIDC)
 
 	defRoute := Route{EnableAuthz: true}
@@ -38,7 +38,7 @@ func (ap *accessPolicySpecStatus) convert(name string, op *api.OpenIDProvider, s
 		}
 	}
 
-	oidcCfg, err := oidc.convert(op, secret)
+	oidcCfg, err := oidc.convert(secret)
 	if err != nil {
 		return nil, err
 	}
@@ -52,15 +52,10 @@ func (ap *accessPolicySpecStatus) convert(name string, op *api.OpenIDProvider, s
 	}, nil
 }
 
-func (apo *accessPolicyOIDC) convert(op *api.OpenIDProvider, secret *core.Secret) (Oidc, error) {
+func (apo *accessPolicyOIDC) convert(secret *core.Secret) (Oidc, error) {
 	cb, err := url.Parse(apo.CallbackPath)
 	if err != nil {
 		return Oidc{}, err
-	}
-
-	var issuer string
-	if op != nil {
-		issuer = op.Spec.Issuer
 	}
 
 	var clientId, clientSecret string
@@ -80,7 +75,6 @@ func (apo *accessPolicyOIDC) convert(op *api.OpenIDProvider, secret *core.Secret
 	}
 
 	return Oidc{
-		Issuer:       issuer,
 		ClientId:     clientId,
 		ClientSecret: clientSecret,
 		TokenSecret:  tokenSecret,
@@ -98,8 +92,8 @@ func (apr *accessPolicyRoute) convert() Route {
 		Headers:     headers.convert(),
 	}
 }
-func (apr *accessPolicyRoles) convert() Roles {
-	roles := make(Roles, len(*apr))
+func (apr *accessPolicyRoles) convert() []string {
+	roles := make([]string, len(*apr))
 	for i := range *apr {
 		roles[i] = (*apr)[i]
 	}

@@ -2,7 +2,7 @@ package replication
 
 import (
 	"github.com/KnowitSolutions/istio-oidc/config"
-	"github.com/KnowitSolutions/istio-oidc/state"
+	"github.com/KnowitSolutions/istio-oidc/state/session"
 	"sync"
 )
 
@@ -13,10 +13,10 @@ type Self struct {
 	latest map[string]uint64
 	mu     sync.RWMutex
 
-	sessStore state.SessionStore
+	sessStore session.Store
 }
 
-func NewSelf(id string, sessStore state.SessionStore) *Self {
+func NewSelf(id string, sessStore session.Store) *Self {
 	return &Self{
 		id:        id,
 		ep:        config.Replication.AdvertiseAddress,

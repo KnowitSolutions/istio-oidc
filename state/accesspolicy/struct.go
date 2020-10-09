@@ -1,7 +1,7 @@
 package accesspolicy
 
 import (
-	"context"
+	"github.com/KnowitSolutions/istio-oidc/state/openidprovider"
 	"golang.org/x/oauth2"
 	"net/url"
 )
@@ -20,8 +20,7 @@ type AccessPolicy struct {
 }
 
 type Oidc struct {
-	openidProvider
-	Issuer       string
+	Provider     openidprovider.OpenIdProvider
 	ClientId     string
 	ClientSecret string
 	TokenSecret  []byte
@@ -31,21 +30,15 @@ type Oidc struct {
 type Routes map[string]Route
 type Route struct {
 	EnableAuthz bool
-	Roles       Roles
+	Roles       []string
 	Headers     Headers
 }
-
-type Roles []string
 
 type Headers []Header
 type Header struct {
 	Name  string
 	Value string
-	Roles Roles
-}
-
-func (ap *AccessPolicy) UpdateOidcProvider(ctx context.Context) error {
-	return ap.Oidc.updateOidcProvider(ctx, ap.Oidc.Issuer)
+	Roles []string
 }
 
 func (oidc Oidc) IsCallback(url url.URL) bool {
@@ -56,11 +49,8 @@ func (oidc Oidc) OAuth2(url url.URL) *oauth2.Config {
 	return &oauth2.Config{
 		ClientID:     oidc.ClientId,
 		ClientSecret: oidc.ClientSecret,
-		Endpoint: oauth2.Endpoint{
-			AuthURL:  oidc.AuthorizationEndpoint,
-			TokenURL: oidc.TokenEndpoint,
-		},
-		RedirectURL: url.ResolveReference(&oidc.Callback).String(),
-		Scopes:      []string{"openid"},
+		Endpoint:     oidc.Provider.Endpoint(),
+		RedirectURL:  url.ResolveReference(&oidc.Callback).String(),
+		Scopes:       []string{"openid"},
 	}
 }

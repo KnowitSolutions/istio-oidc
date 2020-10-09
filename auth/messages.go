@@ -1,8 +1,8 @@
 package auth
 
 import (
-	"github.com/KnowitSolutions/istio-oidc/state"
 	"github.com/KnowitSolutions/istio-oidc/state/accesspolicy"
+	"github.com/KnowitSolutions/istio-oidc/state/session"
 	"gopkg.in/square/go-jose.v2"
 	"net/http"
 	"net/url"
@@ -17,7 +17,7 @@ type request struct {
 
 	policy  *accesspolicy.AccessPolicy
 	route   *accesspolicy.Route
-	session state.Session
+	session session.Session
 }
 
 type response struct {

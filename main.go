@@ -9,7 +9,8 @@ import (
 	"github.com/KnowitSolutions/istio-oidc/log"
 	"github.com/KnowitSolutions/istio-oidc/log/errors"
 	"github.com/KnowitSolutions/istio-oidc/replication"
-	"github.com/KnowitSolutions/istio-oidc/state"
+	"github.com/KnowitSolutions/istio-oidc/state/accesspolicy"
+	"github.com/KnowitSolutions/istio-oidc/state/session"
 	"github.com/KnowitSolutions/istio-oidc/telemetry"
 	authv2 "github.com/envoyproxy/go-control-plane/envoy/service/auth/v2"
 	"google.golang.org/grpc"
@@ -36,8 +37,8 @@ func main() {
 	vals := log.MakeValues("id", id)
 	log.Info(nil, vals, "Assigned peer ID")
 
-	apStore := state.NewAccessPolicyStore()
-	sessStore, err := state.NewSessionStore(id)
+	apStore := accesspolicy.NewAccessPolicyStore()
+	sessStore, err := session.NewSessionStore(id)
 	if err != nil {
 		log.Error(nil, err, "Failed creating stores")
 		os.Exit(1)
@@ -55,7 +56,7 @@ func main() {
 }
 
 func startCtrl(
-	apStore state.AccessPolicyStore,
+	apStore accesspolicy.Store,
 ) {
 	ctrl.SetLogger(log.Shim)
 	klog.SetLogger(log.Shim.WithName("kubernetes"))
@@ -95,8 +96,8 @@ func startCtrl(
 }
 
 func startGrpc(
-	apStore state.AccessPolicyStore,
-	sessStore state.SessionStore,
+	apStore accesspolicy.Store,
+	sessStore session.Store,
 	self *replication.Self,
 	peers *replication.Peers,
 	init chan<- struct{},
@@ -121,15 +122,15 @@ func startGrpc(
 
 func startExtAuthz(
 	srv *grpc.Server,
-	apStore state.AccessPolicyStore,
-	sessStore state.SessionStore,
+	apStore accesspolicy.Store,
+	sessStore session.Store,
 	self *replication.Self,
 	peers *replication.Peers,
 ) {
 	extAuth := auth.Server{
-		AccessPolicyStore: apStore,
-		SessionStore:      sessStore,
-		Client:            replication.Client{Self: self, Peers: peers},
+		AccessPolicies: apStore,
+		Sessions:       sessStore,
+		Client:         replication.Client{Self: self, Peers: peers},
 	}
 	authv2.RegisterAuthorizationServer(srv, extAuth.V2())
 }

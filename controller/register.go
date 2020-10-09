@@ -3,11 +3,11 @@ package controller
 import (
 	"github.com/KnowitSolutions/istio-oidc/controller/accesspolicy"
 	"github.com/KnowitSolutions/istio-oidc/controller/envoyfilter"
-	"github.com/KnowitSolutions/istio-oidc/state"
+	apstate "github.com/KnowitSolutions/istio-oidc/state/accesspolicy"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-func Register(mgr ctrl.Manager, apStore state.AccessPolicyStore) error {
+func Register(mgr ctrl.Manager, apStore apstate.Store) error {
 	err := accesspolicy.Register(mgr, apStore)
 	if err != nil {
 		return err

@@ -1,4 +1,4 @@
-package state
+package session
 
 import (
 	"container/list"
@@ -19,15 +19,15 @@ type Stamp struct {
 	Serial uint64
 }
 
-type StampedSession struct {
+type Stamped struct {
 	Session
 	Stamp
 }
 
-type SessionStore interface {
-	GetSession(string) (Session, bool)
-	SetSession(StampedSession) (StampedSession, bool)
-	StreamSessions(map[string]uint64) <-chan StampedSession
+type Store interface {
+	Get(string) (Session, bool)
+	Set(Stamped) (Stamped, bool)
+	Stream(map[string]uint64) <-chan Stamped
 }
 
 type sessionStore struct {
@@ -40,7 +40,7 @@ type sessionStore struct {
 	delMu  sync.RWMutex
 }
 
-func NewSessionStore(peerId string) (SessionStore, error) {
+func NewSessionStore(peerId string) (Store, error) {
 	ss := &sessionStore{
 		id: peerId,
 
@@ -52,7 +52,7 @@ func NewSessionStore(peerId string) (SessionStore, error) {
 	return ss, nil
 }
 
-func (ss *sessionStore) GetSession(id string) (Session, bool) {
+func (ss *sessionStore) Get(id string) (Session, bool) {
 	ss.mu.RLock()
 	defer ss.mu.RUnlock()
 
@@ -60,7 +60,7 @@ func (ss *sessionStore) GetSession(id string) (Session, bool) {
 	return sess, ok
 }
 
-func (ss *sessionStore) SetSession(sess StampedSession) (StampedSession, bool) {
+func (ss *sessionStore) Set(sess Stamped) (Stamped, bool) {
 	ss.mu.Lock()
 	defer ss.mu.Unlock()
 
@@ -75,9 +75,9 @@ func (ss *sessionStore) SetSession(sess StampedSession) (StampedSession, bool) {
 
 	last := ss.store[sess.Stamp.PeerId].Back()
 	if last != nil {
-		curr := last.Value.(StampedSession).Serial + 1
+		curr := last.Value.(Stamped).Serial + 1
 		if sess.Serial != curr {
-			return StampedSession{}, false
+			return Stamped{}, false
 		}
 	}
 
@@ -87,7 +87,7 @@ func (ss *sessionStore) SetSession(sess StampedSession) (StampedSession, bool) {
 	return sess, true
 }
 
-func (ss *sessionStore) StreamSessions(from map[string]uint64) <-chan StampedSession {
+func (ss *sessionStore) Stream(from map[string]uint64) <-chan Stamped {
 	ss.mu.RLock()
 	defer ss.mu.RUnlock()
 
@@ -96,14 +96,14 @@ func (ss *sessionStore) StreamSessions(from map[string]uint64) <-chan StampedSes
 		store[k] = v
 	}
 
-	ch := make(chan StampedSession)
+	ch := make(chan Stamped)
 	go func() {
 		ss.delMu.RLock()
 		defer ss.delMu.RUnlock()
 
 		for k, l := range store {
 			for e := l.Front(); e != nil; e = e.Next() {
-				v := e.Value.(StampedSession)
+				v := e.Value.(Stamped)
 				if v.Serial >= from[k] {
 					ch <- v
 				}
@@ -136,7 +136,7 @@ func (ss *sessionStore) clean(min time.Time) {
 
 	for _, l := range ss.store {
 		for e := l.Front(); e != nil; e = e.Next() {
-			v := e.Value.(StampedSession)
+			v := e.Value.(Stamped)
 			if v.Expiry.Before(min) {
 				ss.mu.RUnlock()
 				ss.delete(l, e)
@@ -150,7 +150,7 @@ func (ss *sessionStore) delete(l *list.List, e *list.Element) {
 	ss.mu.Lock()
 	defer ss.mu.Unlock()
 
-	v := e.Value.(StampedSession)
+	v := e.Value.(Stamped)
 	l.Remove(e)
 	delete(ss.lookup, v.Id)
 }

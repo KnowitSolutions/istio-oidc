@@ -5,7 +5,7 @@ import (
 	"github.com/KnowitSolutions/istio-oidc/config"
 	"github.com/KnowitSolutions/istio-oidc/controller/predicate"
 	"github.com/KnowitSolutions/istio-oidc/log/errors"
-	"github.com/KnowitSolutions/istio-oidc/state"
+	"github.com/KnowitSolutions/istio-oidc/state/accesspolicy"
 	istionetworking "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	core "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -14,7 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-func Register(mgr ctrl.Manager, apStore state.AccessPolicyStore) error {
+func Register(mgr ctrl.Manager, apStore accesspolicy.Store) error {
 	scheme := mgr.GetScheme()
 	err := core.AddToScheme(scheme)
 	if err != nil {
@@ -90,7 +90,7 @@ func registerLeader(mgr ctrl.Manager) error {
 	return mgr.Add(c)
 }
 
-func registerWorker(mgr ctrl.Manager, apStore state.AccessPolicyStore) error {
+func registerWorker(mgr ctrl.Manager, apStore accesspolicy.Store) error {
 	r := workerReconciler{
 		mgr.GetClient(),
 		mgr.GetEventRecorderFor("accesspolicy-worker"),

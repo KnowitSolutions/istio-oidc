@@ -2,7 +2,7 @@ package replication
 
 import (
 	"context"
-	"github.com/KnowitSolutions/istio-oidc/state"
+	"github.com/KnowitSolutions/istio-oidc/state/session"
 )
 
 type Client struct {
@@ -10,7 +10,7 @@ type Client struct {
 	Peers *Peers
 }
 
-func (c Client) SetSession(sess state.StampedSession) {
+func (c Client) SetSession(sess session.Stamped) {
 	ctx := context.Background()
 	c.Self.update(c.Self.id, sess.Serial)
 

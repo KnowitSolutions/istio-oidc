@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"github.com/KnowitSolutions/istio-oidc/api"
 	"github.com/KnowitSolutions/istio-oidc/log"
-	"github.com/KnowitSolutions/istio-oidc/state"
+	"github.com/KnowitSolutions/istio-oidc/state/session"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/connectivity"
@@ -124,7 +124,7 @@ func (c *connection) update(ctx context.Context, self *Self, latest []*api.Stamp
 	}
 }
 
-func (c *connection) setSession(ctx context.Context, self *Self, sess state.StampedSession) {
+func (c *connection) setSession(ctx context.Context, self *Self, sess session.Stamped) {
 	req := api.SetSessionRequest{
 		PeerId:  self.id,
 		Session: sessionToProto(sess.Session),
@@ -171,11 +171,11 @@ func (c *connection) streamSessions(ctx context.Context, self *Self) bool {
 		vals := log.MakeValues("session", hex.EncodeToString(res.Session.Id))
 		log.Info(ctx, vals, "Received session from peer")
 
-		sess := state.StampedSession{
+		sess := session.Stamped{
 			Session: sessionFromProto(res.Session),
 			Stamp:   stampFromProto(res.Stamp),
 		}
-		_, ok := self.sessStore.SetSession(sess)
+		_, ok := self.sessStore.Set(sess)
 		if !ok {
 			log.Error(ctx, nil, "Received session out of order from peer")
 			go c.reestablish(ctx, self, err)

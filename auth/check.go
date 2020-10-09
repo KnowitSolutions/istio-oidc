@@ -5,7 +5,7 @@ import (
 	"crypto/sha512"
 	"github.com/KnowitSolutions/istio-oidc/log"
 	"github.com/KnowitSolutions/istio-oidc/log/errors"
-	"github.com/KnowitSolutions/istio-oidc/state"
+	"github.com/KnowitSolutions/istio-oidc/state/session"
 	"golang.org/x/oauth2"
 	"net/http"
 	"strings"
@@ -19,7 +19,7 @@ type stateClaims struct {
 
 type bearerClaims struct {
 	claims
-	Roles []string `json:"rol"`
+	Roles map[string][]string `json:"rol"`
 }
 
 func (srv *Server) check(ctx context.Context, req *request) *response {
@@ -77,7 +77,7 @@ func (srv *Server) isAuthenticated(ctx context.Context, req *request) bool {
 	id := string(hash[:])
 
 	var ok bool
-	req.session, ok = srv.GetSession(id)
+	req.session, ok = srv.Sessions.Get(id)
 	return ok
 }
 
@@ -147,7 +147,7 @@ func (srv *Server) updateToken(ctx context.Context, req *request) *response {
 }
 
 func (srv *Server) setToken(ctx context.Context, req *request, token *oauth2.Token, uri string) *response {
-	data, err := req.policy.Oidc.ExtractTokenData(ctx, token)
+	data, err := req.policy.Oidc.Provider.TokenData(ctx, *token)
 	if err != nil {
 		log.Error(ctx, err, "Unable to set access token")
 		return &response{status: http.StatusInternalServerError}
@@ -165,14 +165,14 @@ func (srv *Server) setToken(ctx context.Context, req *request, token *oauth2.Tok
 
 	hash := sha512.Sum512([]byte(tok))
 	id := string(hash[:])
-	sess := state.StampedSession{
-		Session: state.Session{
+	sess := session.Stamped{
+		Session: session.Session{
 			Id:           id,
 			RefreshToken: token.RefreshToken,
 			Expiry:       token.Expiry,
 		},
 	}
-	sess, _ = srv.SessionStore.SetSession(sess)
+	sess, _ = srv.Sessions.Set(sess)
 	srv.Client.SetSession(sess)
 
 	cookie := http.Cookie{
