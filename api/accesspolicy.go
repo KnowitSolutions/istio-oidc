@@ -30,9 +30,7 @@ type AccessPolicy struct {
 }
 
 func (in *AccessPolicy) Validate() []error {
-	errs := make([]error, 0)
-	in.Spec.Validate(errs)
-	return errs
+	return in.Spec.Validate([]error{})
 }
 
 func (in *AccessPolicy) Normalize() {
@@ -48,8 +46,21 @@ type AccessPolicySpec struct {
 	Routes []AccessPolicyRoute `json:"routes,omitempty"`
 }
 
-func (in *AccessPolicySpec) Validate(errs []error) {
-	in.OIDC.Validate(errs)
+func (in *AccessPolicySpec) Validate(errs []error) []error {
+	errs = in.OIDC.Validate(errs)
+
+	names := make(map[string]struct{}, len(in.Routes))
+	for _, r := range in.Routes {
+		_, ok := names[r.Name]
+		if ok {
+			err := errors.New("duplicate route name", "name", r.Name)
+			errs = append(errs, err)
+		} else {
+			names[r.Name] = struct{}{}
+		}
+	}
+
+	return errs
 }
 
 func (in *AccessPolicySpec) Normalize() {
@@ -65,7 +76,7 @@ type AccessPolicyOIDC struct {
 	CallbackPath string `json:"callbackPath"`
 }
 
-func (in *AccessPolicyOIDC) Validate(errs []error) {
+func (in *AccessPolicyOIDC) Validate(errs []error) []error {
 	re := regexp.MustCompile("^([a-z-]+/)?[a-z-.]+$")
 	ok := re.MatchString(in.Provider)
 	if !ok {
@@ -78,6 +89,8 @@ func (in *AccessPolicyOIDC) Validate(errs []error) {
 		err = errors.Wrap(err, "invalid callback path")
 		errs = append(errs, err)
 	}
+
+	return errs
 }
 
 func (in *AccessPolicyOIDC) Normalize() {
