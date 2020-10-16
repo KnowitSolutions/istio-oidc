@@ -1,111 +1,115 @@
 {
-  "apiVersion": "rbac.authorization.k8s.io/v1",
   "kind": "ClusterRole",
+  "apiVersion": "rbac.authorization.k8s.io/v1",
   "metadata": {
-    "creationTimestamp": null,
-    "name": "istio-oidc"
+    "name": "istio-oidc",
+    "creationTimestamp": null
   },
   "rules": [
     {
+      "verbs": [
+        "create",
+        "get",
+        "update"
+      ],
       "apiGroups": [
         ""
       ],
       "resources": [
         "configmaps"
-      ],
-      "verbs": [
-        "create",
-        "get",
-        "update"
       ]
     },
     {
+      "verbs": [
+        "create",
+        "patch"
+      ],
       "apiGroups": [
         ""
       ],
       "resources": [
         "events"
-      ],
-      "verbs": [
-        "create"
       ]
     },
     {
+      "verbs": [
+        "create",
+        "get",
+        "list",
+        "update",
+        "watch"
+      ],
       "apiGroups": [
         ""
       ],
       "resources": [
         "secrets"
-      ],
-      "verbs": [
-        "create",
-        "get",
-        "list",
-        "watch"
       ]
     },
     {
+      "verbs": [
+        "get",
+        "list",
+        "update",
+        "watch"
+      ],
       "apiGroups": [
         "krsdev.app"
       ],
       "resources": [
         "accesspolicies"
-      ],
-      "verbs": [
-        "get",
-        "list",
-        "update",
-        "watch"
       ]
     },
     {
+      "verbs": [
+        "update"
+      ],
       "apiGroups": [
         "krsdev.app"
       ],
       "resources": [
         "accesspolicies/status"
-      ],
-      "verbs": [
-        "update"
       ]
     },
     {
+      "verbs": [
+        "get",
+        "list",
+        "watch"
+      ],
       "apiGroups": [
         "krsdev.app"
       ],
       "resources": [
         "openidproviders"
-      ],
-      "verbs": [
-        "get"
       ]
     },
     {
-      "apiGroups": [
-        "networking.istio.io"
-      ],
-      "resources": [
-        "envoyfilters"
-      ],
       "verbs": [
         "create",
         "get",
         "list",
         "update",
         "watch"
+      ],
+      "apiGroups": [
+        "networking.istio.io"
+      ],
+      "resources": [
+        "envoyfilters"
       ]
     },
     {
+      "verbs": [
+        "get",
+        "list",
+        "watch"
+      ],
       "apiGroups": [
         "networking.istio.io"
       ],
       "resources": [
         "gateways"
-      ],
-      "verbs": [
-        "get",
-        "list",
-        "watch"
       ]
     }
   ]

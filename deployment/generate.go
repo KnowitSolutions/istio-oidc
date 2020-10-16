@@ -23,7 +23,7 @@ func main() {
 	crds(ch)
 
 	ch = make(chan []byte)
-	go res(dir, "api", "rbac:roleName=istio-oidc", ch)
+	go res(dir, "controller", "rbac:roleName=istio-oidc", ch)
 	roles(ch)
 }
 
