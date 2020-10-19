@@ -18,7 +18,7 @@ func extractRoles(path []string, obj interface{}) ([]string, error) {
 	id := path[0]
 	obj, ok = dict[id]
 	if !ok {
-		return nil, fmt.Errorf("missing key %s", id)
+		return nil, nil
 	}
 
 	if len(path) == 1 {
