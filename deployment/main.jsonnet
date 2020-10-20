@@ -1,3 +1,4 @@
+local authorizationPolicy = import 'authorization-policy.jsonnet';
 local clusterRoleBinding = import 'cluster-role-binding.jsonnet';
 local clusterRole = import 'cluster-role.json';
 local configMap = import 'config-map.jsonnet';
@@ -30,6 +31,7 @@ function(
   service(NAMESPACE),
   serviceDiscovery(NAMESPACE),
   destinationRuleDiscovery(NAMESPACE),
+  authorizationPolicy(NAMESPACE),
 
   deployment(NAMESPACE, VERSION, REPLICAS, ANNOTATIONS, AFFINITY, TOLERATIONS),
   configMap(NAMESPACE),
