@@ -14,7 +14,7 @@ function(namespace) {
       Replication:
         Mode: dns
         PeerAddress:
-          Service: tcp
+          Service: grpc
           Domain: istio-oidc-discovery
     ||| % {
       namespace: namespace,

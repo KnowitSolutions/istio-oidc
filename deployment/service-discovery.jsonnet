@@ -9,7 +9,7 @@ function(namespace) {
     clusterIP: 'None',
     selector: { app: 'istio-oidc' },
     ports: [
-      { name: 'tcp', port: 8080, targetPort: 'grpc' },
+      { name: 'grpc', port: 8080, targetPort: 'grpc' },
     ],
   },
 }

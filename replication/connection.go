@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"github.com/KnowitSolutions/istio-oidc/api"
+	"github.com/KnowitSolutions/istio-oidc/config"
 	"github.com/KnowitSolutions/istio-oidc/log"
 	"github.com/KnowitSolutions/istio-oidc/state/session"
 	"google.golang.org/grpc"
@@ -17,8 +18,8 @@ import (
 )
 
 type connection struct {
-	ep    string
-	conn  *grpc.ClientConn
+	ep   string
+	conn *grpc.ClientConn
 
 	live bool
 	init chan struct{}
@@ -26,8 +27,13 @@ type connection struct {
 }
 
 func newConnection(self *Self, peer string) *connection {
+	opts := []grpc.DialOption{grpc.WithInsecure()}
+	if config.Replication.PeerAddress.Domain != "" {
+		opts = append(opts, grpc.WithAuthority(config.Replication.PeerAddress.Domain))
+	}
+
 	conn := connection{ep: peer, init: make(chan struct{})}
-	conn.conn, _ = grpc.Dial(peer, grpc.WithInsecure())
+	conn.conn, _ = grpc.Dial(peer, opts...)
 
 	ctx := log.WithValues(nil, "address", peer)
 	go conn.logConnectionState(ctx)
