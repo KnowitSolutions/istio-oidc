@@ -22,7 +22,6 @@ func NewPeerId() (string, error) {
 }
 
 type Peers struct {
-	peers  map[string]struct{}
 	conns  map[string]*connection
 	mu     sync.RWMutex
 	lookup endpointLookup
@@ -30,33 +29,9 @@ type Peers struct {
 
 func NewPeers() *Peers {
 	return &Peers{
-		peers:  map[string]struct{}{},
 		conns:  map[string]*connection{},
 		lookup: newEndpointLookup(),
 	}
-}
-
-func (p *Peers) addPeer(id string) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	p.peers[id] = struct{}{}
-}
-
-func (p *Peers) hasPeer(id string) bool {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-
-	_, ok := p.peers[id]
-	return ok
-}
-
-func (p *Peers) hasEp(ep string) bool {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-
-	_, ok := p.conns[ep]
-	return ok
 }
 
 func (p *Peers) getEps() []string {
@@ -102,7 +77,7 @@ func (p *Peers) getConnection(self *Self, ep string) *connection {
 	defer p.mu.Unlock()
 
 	if p.conns[ep] == nil {
-		p.conns[ep] = newConnection(self, p.peers, ep)
+		p.conns[ep] = newConnection(self, ep)
 	}
 	return p.conns[ep]
 }

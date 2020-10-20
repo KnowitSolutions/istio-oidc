@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/KnowitSolutions/istio-oidc/config"
+	"github.com/KnowitSolutions/istio-oidc/log"
 	"github.com/KnowitSolutions/istio-oidc/log/errors"
 	"net"
 )
@@ -38,7 +39,11 @@ func (dnsEndpoints) lookupEndpoints(ctx context.Context) ([]string, error) {
 	name := config.Replication.PeerAddress.Domain
 
 	_, srvs, err := net.DefaultResolver.LookupSRV(ctx, svc, "tcp", name)
-	if err != nil {
+	dnsErr, _ := err.(*net.DNSError)
+	if dnsErr != nil && dnsErr.IsNotFound {
+		log.Error(ctx, dnsErr, "No peer information available")
+		return nil, nil
+	} else if err != nil {
 		err := errors.Wrap(err, "failed looking up endpoints")
 		return nil, err
 	}

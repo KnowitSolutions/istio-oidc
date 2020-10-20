@@ -7,7 +7,6 @@ function(namespace) {
   },
   spec: {
     clusterIP: 'None',
-    publishNotReadyAddresses: true,
     selector: { app: 'istio-oidc' },
     ports: [
       { name: 'tcp', port: 8080, targetPort: 'grpc' },

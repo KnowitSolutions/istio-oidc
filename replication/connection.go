@@ -19,15 +19,14 @@ import (
 type connection struct {
 	ep    string
 	conn  *grpc.ClientConn
-	peers map[string]struct{}
 
 	live bool
 	init chan struct{}
 	once sync.Once
 }
 
-func newConnection(self *Self, peers map[string]struct{}, peer string) *connection {
-	conn := connection{ep: peer, peers: peers, init: make(chan struct{})}
+func newConnection(self *Self, peer string) *connection {
+	conn := connection{ep: peer, init: make(chan struct{})}
 	conn.conn, _ = grpc.Dial(peer, grpc.WithInsecure())
 
 	ctx := log.WithValues(nil, "address", peer)
@@ -58,8 +57,6 @@ func (c *connection) handshake(ctx context.Context, self *Self) {
 	}
 
 	ctx = log.WithValues(ctx, "peer", res.PeerId)
-	c.peers[res.PeerId] = struct{}{}
-
 	go c.update(ctx, self, res.Latest)
 }
 

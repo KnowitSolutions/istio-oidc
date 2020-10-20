@@ -27,22 +27,7 @@ func (s Server) Handshake(ctx context.Context, req *api.HandshakeRequest) (*api.
 		return nil, err
 	}
 
-	err := s.Peers.refresh(ctx)
-	if err != nil {
-		log.Error(ctx, nil, "Failed refreshing peers")
-		err := status.Error(codes.Unavailable, "Failed refreshing peers")
-		return nil, err
-	}
-
-	if !s.Peers.hasEp(req.PeerEndpoint) {
-		log.Error(ctx, nil, "Unknown peer endpoint")
-		err := status.Error(codes.PermissionDenied, "Unknown peer endpoint")
-		return nil, err
-	}
-
 	log.Info(ctx, nil, "Received handshake from peer")
-	s.Peers.addPeer(req.PeerId)
-
 	conn := s.Peers.getConnection(s.Self, req.PeerEndpoint)
 	conn.wakeup()
 	if conn.live {
@@ -59,12 +44,6 @@ func (s Server) Handshake(ctx context.Context, req *api.HandshakeRequest) (*api.
 func (s Server) SetSession(ctx context.Context, req *api.SetSessionRequest) (*api.SetSessionResponse, error) {
 	ctx = addressCtx(ctx)
 	ctx = log.WithValues(ctx, "peer", req.PeerId)
-
-	if !s.Peers.hasPeer(req.PeerId) {
-		log.Error(ctx, nil, "Unknown peer ID")
-		err := status.Error(codes.PermissionDenied, "Unknown peer ID")
-		return nil, err
-	}
 
 	sess := sessionFromProto(req.Session)
 	stamp := stampFromProto(req.Stamp)
@@ -86,12 +65,6 @@ func (s Server) SetSession(ctx context.Context, req *api.SetSessionRequest) (*ap
 func (s Server) StreamSessions(req *api.StreamSessionsRequest, stream api.Replication_StreamSessionsServer) error {
 	ctx := addressCtx(stream.Context())
 	ctx = log.WithValues(ctx, "peer", req.PeerId)
-
-	if !s.Peers.hasPeer(req.PeerId) {
-		log.Error(ctx, nil, "Unknown peer ID")
-		err := status.Error(codes.PermissionDenied, "Unknown peer ID")
-		return err
-	}
 
 	log.Info(ctx, nil, "Streaming sessions to peer")
 	from := latestFromProto(req.From)
