@@ -20,14 +20,17 @@ function(
   TOLERATIONS=[],
 ) [
   namespace(NAMESPACE),
+
   customResourceDefinitionOpenIDProvider,
   customResourceDefinitionAccessPolicy,
   clusterRole,
   clusterRoleBinding(NAMESPACE),
   serviceAccount(NAMESPACE),
+
   service(NAMESPACE),
   serviceDiscovery(NAMESPACE),
   destinationRuleDiscovery(NAMESPACE),
-  configMap(NAMESPACE),
+
   deployment(NAMESPACE, VERSION, REPLICAS, ANNOTATIONS, AFFINITY, TOLERATIONS),
+  configMap(NAMESPACE),
 ]
