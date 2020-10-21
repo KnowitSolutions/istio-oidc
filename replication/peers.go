@@ -58,15 +58,18 @@ func (p *Peers) refresh(ctx context.Context) ([]string, error) {
 	return eps, nil
 }
 
-func (p *Peers) getConnection(self *Self, ep string) *connection {
+func (p *Peers) getConnection(self *Self, ep string) (*connection, bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
 	if p.conns[ep] == nil {
 		authority := p.lookup.authority(ep)
 		p.conns[ep] = newConnection(self, ep, authority)
+
+		return p.conns[ep], true
+	} else {
+		return p.conns[ep], false
 	}
-	return p.conns[ep]
 }
 
 func (p *Peers) getConnections() []*connection {

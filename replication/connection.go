@@ -21,12 +21,14 @@ type connection struct {
 	conn *grpc.ClientConn
 
 	live bool
-	init chan struct{}
+	dead bool
+
 	once sync.Once
+	cond sync.Cond
 }
 
 func newConnection(self *Self, peer string, authority string) *connection {
-	conn := connection{ep: peer, init: make(chan struct{})}
+	conn := connection{ep: peer, cond: *sync.NewCond(&sync.Mutex{})}
 	conn.conn, _ = grpc.Dial(peer, grpc.WithInsecure(), grpc.WithAuthority(authority))
 
 	ctx := log.WithValues(nil, "address", peer)
@@ -68,11 +70,7 @@ func (c *connection) reestablish(ctx context.Context, self *Self, err error) {
 	}
 
 	c.live = false
-	ch := c.init
-	if ch != nil {
-		c.init = nil
-		close(ch)
-	}
+	c.cond.Broadcast()
 
 	if status.Code(err) == codes.Canceled {
 		log.Info(ctx, nil, "Disconnected from peer")
@@ -85,17 +83,8 @@ func (c *connection) reestablish(ctx context.Context, self *Self, err error) {
 		c.conn.WaitForStateChange(ctx, connectivity.Connecting)
 	}
 
-	c.init = make(chan struct{})
 	c.once = sync.Once{}
-
 	go c.handshake(ctx, self)
-}
-
-func (c *connection) wait() {
-	ch := c.init
-	if ch != nil {
-		<-ch
-	}
 }
 
 func (c *connection) wakeup() {
@@ -114,11 +103,7 @@ func (c *connection) update(ctx context.Context, self *Self, latest []*api.Stamp
 		c.live = true
 	}
 
-	ch := c.init
-	if ch != nil {
-		c.init = nil
-		close(ch)
-	}
+	c.cond.Broadcast()
 }
 
 func (c *connection) setSession(ctx context.Context, self *Self, sess session.Stamped) {
@@ -184,6 +169,7 @@ func (c *connection) streamSessions(ctx context.Context, self *Self) bool {
 }
 
 func (c *connection) disconnect() {
+	c.dead = true
 	_ = c.conn.Close()
 }
 

@@ -28,7 +28,7 @@ func (s Server) Handshake(ctx context.Context, req *api.HandshakeRequest) (*api.
 	}
 
 	log.Info(ctx, nil, "Received handshake from peer")
-	conn := s.Peers.getConnection(s.Self, req.PeerEndpoint)
+	conn, _ := s.Peers.getConnection(s.Self, req.PeerEndpoint)
 	conn.wakeup()
 	if conn.live {
 		go conn.update(ctx, s.Self, req.Latest)
