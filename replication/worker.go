@@ -27,15 +27,13 @@ func worker(self *Self, peers *Peers, init chan<- struct{}) {
 
 func refresh(ctx context.Context, self *Self, peers *Peers) bool {
 	log.Info(ctx, nil, "Refreshing peer list")
-	err := peers.refresh(ctx)
+	eps, err := peers.refresh(ctx)
 	if err != nil {
 		log.Error(ctx, err, "Failed refreshing peers")
 		return false
 	}
 
-	eps := peers.getEps()
 	joined := len(eps) == 0
-
 	for _, ep := range eps {
 		conn := peers.getConnection(self, ep)
 		conn.wait()

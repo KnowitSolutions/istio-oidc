@@ -59,7 +59,9 @@ func (dnsEndpoints) lookupEndpoints(ctx context.Context) ([]string, error) {
 
 		for _, ip := range ips {
 			ep := fmt.Sprintf("%s:%d", ip.IP, srv.Port)
-			eps = append(eps, ep)
+			if ep != config.Replication.AdvertiseAddress {
+				eps = append(eps, ep)
+			}
 		}
 	}
 

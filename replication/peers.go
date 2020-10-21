@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"github.com/KnowitSolutions/istio-oidc/config"
 	"github.com/KnowitSolutions/istio-oidc/log/errors"
 	"sync"
 )
@@ -34,22 +33,11 @@ func NewPeers() *Peers {
 	}
 }
 
-func (p *Peers) getEps() []string {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-
-	eps := make([]string, 0, len(p.conns))
-	for ep := range p.conns {
-		eps = append(eps, ep)
-	}
-	return eps
-}
-
-func (p *Peers) refresh(ctx context.Context) error {
+func (p *Peers) refresh(ctx context.Context) ([]string, error) {
 	eps, err := p.lookup.lookupEndpoints(ctx)
 	if err != nil {
 		err := errors.Wrap(err, "failed refreshing endpoints")
-		return err
+		return nil, err
 	}
 
 	p.mu.Lock()
@@ -57,19 +45,17 @@ func (p *Peers) refresh(ctx context.Context) error {
 
 	keep := make(map[string]bool, len(eps))
 	for _, ep := range eps {
-		if ep != config.Replication.AdvertiseAddress {
-			keep[ep] = true
-			p.conns[ep] = p.conns[ep]
-		}
+		keep[ep] = true
 	}
-	for ep := range p.conns {
+
+	for ep, conn := range p.conns {
 		if !keep[ep] {
-			p.conns[ep].disconnect()
+			conn.disconnect()
 			delete(p.conns, ep)
 		}
 	}
 
-	return nil
+	return eps, nil
 }
 
 func (p *Peers) getConnection(self *Self, ep string) *connection {
@@ -88,9 +74,7 @@ func (p *Peers) getConnections() []*connection {
 
 	conns := make([]*connection, 0, len(p.conns))
 	for _, conn := range p.conns {
-		if conn != nil {
-			conns = append(conns, conn)
-		}
+		conns = append(conns, conn)
 	}
 	return conns
 }
