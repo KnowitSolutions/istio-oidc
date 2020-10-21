@@ -19,7 +19,7 @@ func (srv *Server) V2() *ServerV2 {
 	return &ServerV2{Server: srv}
 }
 
-func (srv *Server) newRequest(address, cookies string, metadata map[string]string) (*request, error) {
+func (srv *Server) newRequest(address, cookies, fetchMode string, metadata map[string]string) (*request, error) {
 	parsed, err := url.Parse(address)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to parse address", "address", address)
@@ -41,9 +41,11 @@ func (srv *Server) newRequest(address, cookies string, metadata map[string]strin
 	req.Header.Add("Cookie", cookies)
 
 	return &request{
-		url:     *parsed,
-		cookies: req.Cookies(),
-		policy:  ap,
-		route:   &route,
+		url:       *parsed,
+		cookies:   req.Cookies(),
+		fetchMode: fetchMode,
+
+		policy: ap,
+		route:  &route,
 	}, nil
 }

@@ -26,8 +26,9 @@ func (srv *ServerV2) Check(ctx context.Context, req *auth.CheckRequest) (*auth.C
 	path := req.Attributes.Request.Http.Path
 	addr := fmt.Sprintf("%s://%s%s", proto, host, path)
 	cookies := req.Attributes.Request.Http.Headers["cookie"]
+	fetchMode := req.Attributes.Request.Http.Headers["sec-fetch-mode"]
 	meta := req.Attributes.ContextExtensions
-	data, err := srv.newRequest(addr, cookies, meta)
+	data, err := srv.newRequest(addr, cookies, fetchMode, meta)
 
 	var r *response
 	if err != nil {

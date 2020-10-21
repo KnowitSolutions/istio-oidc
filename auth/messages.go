@@ -11,9 +11,10 @@ import (
 const bearerCookie = "bearer"
 
 type request struct {
-	url     url.URL
-	cookies []*http.Cookie
-	claims  bearerClaims
+	url       url.URL
+	cookies   []*http.Cookie
+	fetchMode string
+	claims    bearerClaims
 
 	policy  *accesspolicy.AccessPolicy
 	route   *accesspolicy.Route

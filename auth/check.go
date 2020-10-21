@@ -82,6 +82,15 @@ func (srv *Server) isAuthenticated(ctx context.Context, req *request) bool {
 }
 
 func (srv *Server) startOidc(ctx context.Context, req *request) *response {
+	switch req.fetchMode {
+	case "":
+	case "navigate":
+	case "nested-navigate":
+	default:
+		log.Info(ctx, nil, "Skipping OIDC for non-navigation request")
+		return &response{status: http.StatusForbidden}
+	}
+
 	log.Info(ctx, nil, "Starting OIDC")
 
 	claims := &stateClaims{Path: req.url.Path}
