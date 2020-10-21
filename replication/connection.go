@@ -184,9 +184,7 @@ func (c *connection) streamSessions(ctx context.Context, self *Self) bool {
 }
 
 func (c *connection) disconnect() {
-	if c != nil {
-		_ = c.conn.Close()
-	}
+	_ = c.conn.Close()
 }
 
 func (c *connection) logConnectionState(ctx context.Context) {
