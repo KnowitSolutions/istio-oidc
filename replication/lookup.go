@@ -11,6 +11,7 @@ import (
 
 type endpointLookup interface {
 	lookupEndpoints(context.Context) ([]string, error)
+	authority(string) string
 }
 
 func newEndpointLookup() endpointLookup {
@@ -40,6 +41,10 @@ func (staticEndpoints) lookupEndpoints(_ context.Context) ([]string, error) {
 	}
 
 	return eps, nil
+}
+
+func (staticEndpoints) authority(addr string) string {
+	return addr
 }
 
 type dnsEndpoints struct{}
@@ -79,8 +84,16 @@ func (dnsEndpoints) lookupEndpoints(ctx context.Context) ([]string, error) {
 	return eps, nil
 }
 
+func (dnsEndpoints) authority(_ string) string {
+	return config.Replication.PeerAddress.Domain
+}
+
 type noneEndpoints struct{}
 
 func (noneEndpoints) lookupEndpoints(_ context.Context) ([]string, error) {
 	return nil, nil
+}
+
+func (noneEndpoints) authority(_ string) string {
+	return ""
 }

@@ -63,7 +63,8 @@ func (p *Peers) getConnection(self *Self, ep string) *connection {
 	defer p.mu.Unlock()
 
 	if p.conns[ep] == nil {
-		p.conns[ep] = newConnection(self, ep)
+		authority := p.lookup.authority(ep)
+		p.conns[ep] = newConnection(self, ep, authority)
 	}
 	return p.conns[ep]
 }
