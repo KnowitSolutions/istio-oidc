@@ -22,6 +22,12 @@ func extractTokenData(ctx context.Context, op OpenIdProvider, tok oauth2.Token) 
 		return TokenData{}, errors.Wrap(err, "unable to get access token claims")
 	}
 
+	rt := jwt.Claims{}
+	err = claimsUnsafe(tok.RefreshToken, &rt)
+	if err != nil {
+		return TokenData{}, errors.Wrap(err, "unable to get refresh token claims")
+	}
+
 	idt := make(map[string]interface{}, 0)
 	err = claims(tok.Extra("id_token").(string), jwks, &idt)
 	if err != nil {
@@ -50,6 +56,7 @@ func extractTokenData(ctx context.Context, op OpenIdProvider, tok oauth2.Token) 
 	sub, _ := idt["sub"].(string)
 	return TokenData{
 		Subject: sub,
+		Expiry:  rt.Expiry.Time(),
 		Roles:   roles,
 	}, nil
 }
@@ -75,6 +82,20 @@ func claims(tok string, jwks jose.JSONWebKeySet, claims interface{}) error {
 	err = parsed.Claims(&jwks, claims)
 	if err != nil {
 		return errors.Wrap(err, "failed deserializing custom claims", "token", tok)
+	}
+
+	return nil
+}
+
+func claimsUnsafe(tok string, claims interface{}) error {
+	parsed, err := jwt.ParseSigned(tok)
+	if err != nil {
+		return errors.Wrap(err, "failed parsing token", "token", tok)
+	}
+
+	err = parsed.UnsafeClaimsWithoutVerification(claims)
+	if err != nil {
+		return errors.Wrap(err, "failed deserializing claims", "token", tok)
 	}
 
 	return nil

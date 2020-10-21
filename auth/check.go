@@ -178,7 +178,7 @@ func (srv *Server) setToken(ctx context.Context, req *request, token *oauth2.Tok
 		Session: session.Session{
 			Id:           id,
 			RefreshToken: token.RefreshToken,
-			Expiry:       token.Expiry,
+			Expiry:       data.Expiry,
 		},
 	}
 	sess, _ = srv.Sessions.Set(sess)

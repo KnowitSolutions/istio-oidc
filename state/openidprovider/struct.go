@@ -3,6 +3,7 @@ package openidprovider
 import (
 	"context"
 	"golang.org/x/oauth2"
+	"time"
 )
 
 type OpenIdProvider struct {
@@ -48,5 +49,6 @@ func (op OpenIdProvider) TokenData(ctx context.Context, tok oauth2.Token) (Token
 
 type TokenData struct {
 	Subject string
+	Expiry  time.Time
 	Roles   map[string][]string
 }
