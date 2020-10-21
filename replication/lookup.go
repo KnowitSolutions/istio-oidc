@@ -29,12 +29,23 @@ func newEndpointLookup() endpointLookup {
 type staticEndpoints struct{}
 
 func (staticEndpoints) lookupEndpoints(_ context.Context) ([]string, error) {
-	return config.Replication.StaticPeers, nil
+	self := config.Replication.AdvertiseAddress
+	peers := config.Replication.StaticPeers
+	eps := make([]string, 0, len(peers))
+
+	for _, ep := range peers {
+		if ep != self {
+			eps = append(eps, ep)
+		}
+	}
+
+	return eps, nil
 }
 
 type dnsEndpoints struct{}
 
 func (dnsEndpoints) lookupEndpoints(ctx context.Context) ([]string, error) {
+	self := config.Replication.AdvertiseAddress
 	svc := config.Replication.PeerAddress.Service
 	name := config.Replication.PeerAddress.Domain
 
@@ -59,7 +70,7 @@ func (dnsEndpoints) lookupEndpoints(ctx context.Context) ([]string, error) {
 
 		for _, ip := range ips {
 			ep := fmt.Sprintf("%s:%d", ip.IP, srv.Port)
-			if ep != config.Replication.AdvertiseAddress {
+			if ep != self {
 				eps = append(eps, ep)
 			}
 		}
