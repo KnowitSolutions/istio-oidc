@@ -11,10 +11,10 @@ type openIDProviderRoleMappings []api.OpenIDProviderRoleMapping
 
 func New(ctx context.Context, op *api.OpenIDProvider) (OpenIdProvider, error) {
 	spec := openIdProviderSpec(op.Spec)
-	return spec.convert(ctx)
+	return spec.convert(ctx, op.Namespace + "/" + op.Name)
 }
 
-func (op openIdProviderSpec) convert(ctx context.Context) (OpenIdProvider, error) {
+func (op openIdProviderSpec) convert(ctx context.Context, name string) (OpenIdProvider, error) {
 	addr := op.Issuer + "/.well-known/openid-configuration"
 
 	cfg := openIdConfiguration{}
@@ -31,7 +31,7 @@ func (op openIdProviderSpec) convert(ctx context.Context) (OpenIdProvider, error
 		return OpenIdProvider{}, err
 	}
 
-	return OpenIdProvider{cfg: cfg, maps: maps}, nil
+	return OpenIdProvider{Name: name, cfg: cfg, maps: maps}, nil
 }
 
 func (oprm openIDProviderRoleMappings) convert() ([]roleMapping, error) {

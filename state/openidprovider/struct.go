@@ -7,6 +7,7 @@ import (
 )
 
 type OpenIdProvider struct {
+	Name string
 	cfg  openIdConfiguration
 	maps []roleMapping
 }

@@ -51,7 +51,7 @@ func main() {
 
 	go startCtrl(apStore)
 	go startGrpc(apStore, sessStore, self, peers, init)
-	go startTelemetry(init)
+	go startTelemetry(init, apStore, sessStore)
 	select {}
 }
 
@@ -149,10 +149,13 @@ func startReplication(
 
 func startTelemetry(
 	init <-chan struct{},
+	apStore accesspolicy.Store,
+	sessStore session.Store,
 ) {
 	mux := http.NewServeMux()
 	srv := http.Server{Addr: config.Telemetry.Address, Handler: mux}
 
+	telemetry.RegisterDashboard(mux, apStore, sessStore)
 	telemetry.RegisterProbes(mux, init)
 	telemetry.RegisterMetrics(mux)
 
