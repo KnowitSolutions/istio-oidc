@@ -4,6 +4,7 @@ import (
 	"container/list"
 	"github.com/KnowitSolutions/istio-oidc/config"
 	"github.com/KnowitSolutions/istio-oidc/log"
+	"github.com/KnowitSolutions/istio-oidc/log/errors"
 	"sync"
 	"time"
 )
@@ -26,7 +27,7 @@ type Stamped struct {
 
 type Store interface {
 	Get(string) (Session, bool)
-	Set(Stamped) (Stamped, bool)
+	Set(Stamped) (Stamped, error)
 	Stream(map[string]uint64) <-chan Stamped
 }
 
@@ -60,7 +61,7 @@ func (ss *sessionStore) Get(id string) (Session, bool) {
 	return sess, ok
 }
 
-func (ss *sessionStore) Set(sess Stamped) (Stamped, bool) {
+func (ss *sessionStore) Set(sess Stamped) (Stamped, error) {
 	ss.mu.Lock()
 	defer ss.mu.Unlock()
 
@@ -73,18 +74,23 @@ func (ss *sessionStore) Set(sess Stamped) (Stamped, bool) {
 		ss.store[sess.Stamp.PeerId] = list.New()
 	}
 
-	last := ss.store[sess.Stamp.PeerId].Back()
+	peer := sess.Stamp.PeerId
+	last := ss.store[peer].Back()
 	if last != nil {
-		curr := last.Value.(Stamped).Serial + 1
-		if sess.Serial != curr {
-			return Stamped{}, false
+		latest := last.Value.(Stamped).Serial
+		if sess.Serial <= latest {
+			err := errors.New("out of order session","peer", peer, "latest", latest, "new", sess.Serial)
+			return Stamped{}, err
+		} else if sess.Serial != latest + 1 {
+			vals := log.MakeValues(peer, "latest", latest, "new", sess.Serial)
+			log.Info(nil, vals, "Detected skipped session")
 		}
 	}
 
 	ss.store[sess.Stamp.PeerId].PushBack(sess)
 	ss.lookup[sess.Id] = sess.Session
 
-	return sess, true
+	return sess, nil
 }
 
 func (ss *sessionStore) Stream(from map[string]uint64) <-chan Stamped {

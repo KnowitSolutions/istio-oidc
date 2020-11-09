@@ -51,12 +51,13 @@ func (s Server) SetSession(ctx context.Context, req *api.SetSessionRequest) (*ap
 	vals := log.MakeValues("session", hex.EncodeToString(req.Session.Id))
 	log.Info(ctx, vals, "Received session from peer")
 
-	_, ok := s.Self.sessStore.Set(session.Stamped{Session: sess, Stamp: stamp})
-	if ok {
+	_, err := s.Self.sessStore.Set(session.Stamped{Session: sess, Stamp: stamp})
+	if err == nil {
 		s.Self.update(stamp.PeerId, stamp.Serial)
 		return &api.SetSessionResponse{}, nil
 	} else {
-		err := status.Error(codes.InvalidArgument, "Detected skipped session from peer")
+		log.Error(ctx, err, "Error setting session")
+		err := status.Error(codes.InvalidArgument, "Error setting session")
 		return &api.SetSessionResponse{}, err
 	}
 

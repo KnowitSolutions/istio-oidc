@@ -39,7 +39,7 @@ func (oprm openIDProviderRoleMappings) convert() ([]roleMapping, error) {
 	for i, rm := range oprm {
 		from, ok := fromStrToConst[rm.From]
 		if !ok {
-			err := errors.New("Invalid from", "from", rm.From)
+			err := errors.New("invalid from", "from", rm.From)
 			return nil, err
 		}
 

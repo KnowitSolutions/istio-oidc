@@ -157,9 +157,9 @@ func (c *connection) streamSessions(ctx context.Context, self *Self) bool {
 			Session: sessionFromProto(res.Session),
 			Stamp:   stampFromProto(res.Stamp),
 		}
-		_, ok := self.sessStore.Set(sess)
-		if !ok {
-			log.Error(ctx, nil, "Received session out of order from peer")
+		_, err = self.sessStore.Set(sess)
+		if err != nil {
+			log.Error(ctx, err, "Error setting session")
 			go c.reestablish(ctx, self, err)
 			return false
 		}
