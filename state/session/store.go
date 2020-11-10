@@ -82,7 +82,7 @@ func (ss *sessionStore) Set(sess Stamped) (Stamped, error) {
 			err := errors.New("out of order session","peer", peer, "latest", latest, "new", sess.Serial)
 			return Stamped{}, err
 		} else if sess.Serial != latest + 1 {
-			vals := log.MakeValues(peer, "latest", latest, "new", sess.Serial)
+			vals := log.MakeValues("peer", peer, "latest", latest, "new", sess.Serial)
 			log.Info(nil, vals, "Detected skipped session")
 		}
 	}
